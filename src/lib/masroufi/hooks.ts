@@ -10,6 +10,7 @@ import {
   deleteExpense,
   getMonthSnapshot,
   getJoinRequestDetail,
+  leaveHousehold,
   lookupJoinCode,
   requestJoinHousehold,
   resolveJoinRequest,
@@ -182,6 +183,15 @@ export function useMasroufiMutations() {
     onError: (e) => fail(e, "تعذر إرسال طلب الانضمام"),
   });
 
+  const leave = useMutation({
+    mutationFn: () => leaveHousehold(),
+    onSuccess: () => {
+      toast.success("تمت مغادرة الأسرة");
+      void invalidate();
+    },
+    onError: (e) => fail(e, "تعذر مغادرة الأسرة"),
+  });
+
   const joinResolve = useMutation({
     mutationFn: (data: { id: string; decision: "erase" | "keep" | "reject" }) => resolveJoinRequest({ data }),
     onSuccess: (result) => {
@@ -205,6 +215,7 @@ export function useMasroufiMutations() {
     homeRequestRemove,
     create,
     join,
+    leave,
     joinResolve,
     invalidate,
   };

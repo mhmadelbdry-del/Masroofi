@@ -314,6 +314,24 @@ function HouseholdSettings({ householdData: data, userLabel }: { householdData: 
         </Button>
       </form>
 
+      <section className="paper-card rounded-lg border border-danger/30 p-4">
+        <h2 className="font-semibold">إدارة الأسرة</h2>
+        <p className="mt-1 text-sm leading-6 text-muted">
+          يمكنك مغادرة هذا البيت للانضمام إلى بيت آخر. لن تُحذف بيانات البيت عند مغادرتك.
+        </p>
+        <Button
+          variant="outline"
+          className="mt-3 w-full border-danger/40 text-danger hover:bg-danger/10"
+          disabled={mut.leave.isPending}
+          onClick={() => {
+            const confirmed = window.confirm("هل تريد مغادرة الأسرة؟ ستحتاج إلى كود جديد للانضمام إلى أسرة أخرى.");
+            if (confirmed) mut.leave.mutate();
+          }}
+        >
+          {mut.leave.isPending ? "جارٍ المغادرة…" : "مغادرة الأسرة"}
+        </Button>
+      </section>
+
       <section className="paper-card rounded-lg p-4">
         <p className="text-sm text-muted">الحساب: {userLabel}</p>
         <Button

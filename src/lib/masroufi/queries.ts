@@ -629,6 +629,28 @@ export const resolveJoinRequest = createServerFn({ method: "POST" })
     return { status: "approved" as const, mode: data.decision };
   });
 
+export const leaveHousehold = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => {
+    const sql = await getSql();
+    const mine = await membership(sql, context.userId);
+    if (!mine) throw new Error("لا يوجد بيت مرتبط بحسابك");
+    if (mine.owner_user_id === context.userId) {
+      const otherMembers = await sql<{ user_id: string }>`
+        select user_id from household_users
+        where household_id = ${mine.household_id} and user_id <> ${context.userId}
+        limit 1
+      `;
+      if (otherMembers[0]) {
+        throw new Error("لا يمكن لمالك البيت المغادرة بعد انضمام شريك آخر؛ انقل الملكية أولًا");
+      }
+    }
+    await sql`delete from household_join_requests where requester_user_id = ${context.userId} and status = 'pending'`;
+    await sql`delete from push_devices where user_id = ${context.userId}`;
+    await sql`delete from household_users where user_id = ${context.userId}`;
+    return { ok: true };
+  });
+
 export const lookupJoinCode = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .validator((d: unknown) => z.object({ code: z.string().trim().min(4).max(12) }).parse(d))
