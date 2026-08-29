@@ -9,8 +9,10 @@ import {
   createHousehold,
   deleteExpense,
   getMonthSnapshot,
-  joinHousehold,
+  getJoinRequestDetail,
   lookupJoinCode,
+  requestJoinHousehold,
+  resolveJoinRequest,
   saveReflection,
   setActiveMember,
   toggleHomeRequest,
@@ -172,11 +174,21 @@ export function useMasroufiMutations() {
   });
 
   const join = useMutation({
-    mutationFn: (data: { code: string; memberId: string }) => joinHousehold({ data }),
+    mutationFn: (data: { code: string; memberId: string; requesterName: string }) => requestJoinHousehold({ data }),
     onSuccess: () => {
+      toast.success("تم إرسال طلب الانضمام إلى صاحب البيت");
       void invalidate();
     },
-    onError: (e) => fail(e, "تعذر الانضمام"),
+    onError: (e) => fail(e, "تعذر إرسال طلب الانضمام"),
+  });
+
+  const joinResolve = useMutation({
+    mutationFn: (data: { id: string; decision: "erase" | "keep" | "reject" }) => resolveJoinRequest({ data }),
+    onSuccess: (result) => {
+      toast.success(result.status === "rejected" ? "تم رفض الطلب" : "تم قبول الطلب");
+      void invalidate();
+    },
+    onError: (e) => fail(e, "تعذر معالجة طلب الانضمام"),
   });
 
   return {
@@ -193,8 +205,17 @@ export function useMasroufiMutations() {
     homeRequestRemove,
     create,
     join,
+    joinResolve,
     invalidate,
   };
+}
+
+export function useJoinRequestDetail(id: string | null, enabled = true) {
+  return useQuery({
+    queryKey: ["join-request-detail", id],
+    queryFn: () => getJoinRequestDetail({ data: { id: id! } }),
+    enabled: Boolean(id) && enabled,
+  });
 }
 
 export function useJoinLookup(code: string) {

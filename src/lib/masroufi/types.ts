@@ -23,6 +23,40 @@ export type Category = {
   spent: number;
 };
 
+export type JoinRequest = {
+  id: string;
+  requesterName: string;
+  targetMemberId: string;
+  targetMemberName: string;
+  requestedAt: string;
+  sourceMemberName: string | null;
+  sourceExpenseCount: number;
+  sourceExpenseTotal: number;
+  sourceRequestCount: number;
+  status: "pending";
+};
+
+export type JoinRequestDetail = {
+  id: string;
+  requesterName: string;
+  sourceMemberName: string | null;
+  requestedAt: string;
+  sourceExpenses: Array<{
+    description: string;
+    amount: number;
+    occurredAt: string;
+  }>;
+  sourceRequests: Array<{
+    title: string;
+    quantity: string;
+    completed: boolean;
+    createdAt: string;
+  }>;
+  targetExpenseCount: number;
+  targetExpenseTotal: number;
+  targetRequestCount: number;
+};
+
 export type HomeRequest = {
   id: string;
   title: string;
@@ -54,6 +88,9 @@ export type MonthSnapshot = {
   household: Household | null;
   members: Member[];
   me: { memberId: string; name: string } | null;
+  isOwner: boolean;
+  joinRequests: JoinRequest[];
+  pendingJoinRequest: JoinRequest | null;
   categories: Category[];
   expenses: Expense[];
   homeRequests: HomeRequest[];

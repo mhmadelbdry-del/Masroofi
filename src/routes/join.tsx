@@ -6,6 +6,7 @@ import { MemberDot } from "@/components/masroufi/member-dot";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { useJoinLookup, useMasroufiMutations, useSnapshot } from "@/lib/masroufi/hooks";
 import { cn } from "@/lib/utils";
 
@@ -20,17 +21,35 @@ function JoinPage() {
 }
 
 function JoinForm() {
+  const user = useCurrentUser();
   const { data, isPending } = useSnapshot();
   const nav = useNavigate();
   const mut = useMasroufiMutations();
   const [code, setCode] = useState("");
   const [memberId, setMemberId] = useState("");
+  const [submitted, setSubmitted] = useState(false);
   const lookup = useJoinLookup(code);
 
   if (isPending) return <Splash />;
   if (data?.household) return <Navigate to="/" />;
 
   const members = lookup.data?.found ? lookup.data.members : [];
+  const waiting = Boolean(data?.pendingJoinRequest) || submitted;
+
+  if (waiting) {
+    return (
+      <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center px-5 py-10 text-center">
+        <Logo withWord />
+        <h1 className="mt-5 text-2xl font-semibold">طلبك قيد المراجعة</h1>
+        <p className="mt-3 text-sm leading-6 text-muted">
+          تم إرسال طلب الانضمام إلى صاحب الأسرة. سيختار طريقة التعامل مع بياناتك القديمة ثم يوافق على انضمامك.
+        </p>
+        <Button className="mt-6 w-full" onClick={() => void nav({ to: "/settings" })}>
+          العودة إلى الضبط
+        </Button>
+      </main>
+    );
+  }
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center px-5 py-10">
@@ -43,8 +62,12 @@ function JoinForm() {
           e.preventDefault();
           if (!memberId) return;
           try {
-            await mut.join.mutateAsync({ code, memberId });
-            await nav({ to: "/" });
+            await mut.join.mutateAsync({
+              code,
+              memberId,
+              requesterName: user?.displayName ?? user?.primaryEmail ?? "شريك",
+            });
+            setSubmitted(true);
           } catch {
             /* toast from mutation */
           }
@@ -92,7 +115,7 @@ function JoinForm() {
           </div>
         ) : null}
         <Button type="submit" className="w-full" disabled={!memberId || mut.join.isPending}>
-          {mut.join.isPending ? "جارٍ الانضمام…" : "انضم وزامن الدفتر"}
+          {mut.join.isPending ? "جارٍ إرسال الطلب…" : "إرسال طلب الانضمام"}
         </Button>
       </form>
       <p className="mt-5 text-center text-sm text-muted">

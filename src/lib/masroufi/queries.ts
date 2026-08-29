@@ -5,7 +5,7 @@ import { sendHouseholdPush } from "./push.server";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { DEFAULT_CATEGORIES, DEMO_EXPENSES } from "./defaults";
 import { cairoLocalToDate, cairoParts, monthBoundsIso } from "./format";
-import type { Category, CategoryKind, Expense, HomeRequest, Member, MonthSnapshot } from "./types";
+import type { Category, CategoryKind, Expense, HomeRequest, JoinRequest, JoinRequestDetail, Member, MonthSnapshot } from "./types";
 
 function num(v: unknown): number {
   const n = typeof v === "number" ? v : Number(v);
@@ -30,6 +30,7 @@ type MembershipRow = {
   monthly_income: string | number;
   savings_goal: string | number;
   join_code: string;
+  owner_user_id: string | null;
 };
 
 async function membership(sql: Sql, userId: string): Promise<MembershipRow | null> {
@@ -40,7 +41,8 @@ async function membership(sql: Sql, userId: string): Promise<MembershipRow | nul
       m.name as member_name,
       h.monthly_income,
       h.savings_goal,
-      h.join_code
+      h.join_code,
+      h.owner_user_id
     from household_users hu
     join households h on h.id = hu.household_id
     join household_members m on m.id = hu.member_id
@@ -86,6 +88,9 @@ async function loadSnapshot(
       household: null,
       members: [],
       me: null,
+      isOwner: false,
+      joinRequests: [],
+      pendingJoinRequest: null,
       categories: [],
       expenses: [],
       homeRequests: [],
@@ -98,7 +103,7 @@ async function loadSnapshot(
   const { start, end } = monthBoundsIso(year, month);
   const hid = mine.household_id;
 
-  const [members, catRows, expRows, requestRows, refRows] = await Promise.all([
+  const [members, catRows, expRows, requestRows, refRows, joinRequestRows, pendingJoinRows] = await Promise.all([
     loadMembers(sql, hid),
     sql<{
       id: string;
@@ -194,6 +199,61 @@ async function loadSnapshot(
       where household_id = ${hid} and year = ${year} and month = ${month}
       limit 1
     `,
+    sql<{
+      id: string;
+      requester_name: string;
+      target_member_id: string;
+      target_member_name: string;
+      requested_at: unknown;
+      source_member_name: string | null;
+      source_expense_count: string | number;
+      source_expense_total: string | number;
+      source_request_count: string | number;
+    }>`
+      select
+        jr.id,
+        jr.requester_name,
+        jr.target_member_id,
+        tm.name as target_member_name,
+        jr.created_at as requested_at,
+        sm.name as source_member_name,
+        (select count(*) from expenses e where e.created_by_member_id = jr.source_member_id) as source_expense_count,
+        coalesce((select sum(e.amount) from expenses e where e.created_by_member_id = jr.source_member_id), 0) as source_expense_total,
+        (select count(*) from home_requests r where r.created_by_member_id = jr.source_member_id) as source_request_count
+      from household_join_requests jr
+      join household_members tm on tm.id = jr.target_member_id
+      left join household_members sm on sm.id = jr.source_member_id
+      where jr.target_household_id = ${hid} and jr.status = 'pending'
+      order by jr.created_at desc
+    `,
+    sql<{
+      id: string;
+      requester_name: string;
+      target_member_id: string;
+      target_member_name: string;
+      requested_at: unknown;
+      source_member_name: string | null;
+      source_expense_count: string | number;
+      source_expense_total: string | number;
+      source_request_count: string | number;
+    }>`
+      select
+        jr.id,
+        jr.requester_name,
+        jr.target_member_id,
+        tm.name as target_member_name,
+        jr.created_at as requested_at,
+        sm.name as source_member_name,
+        (select count(*) from expenses e where e.created_by_member_id = jr.source_member_id) as source_expense_count,
+        coalesce((select sum(e.amount) from expenses e where e.created_by_member_id = jr.source_member_id), 0) as source_expense_total,
+        (select count(*) from home_requests r where r.created_by_member_id = jr.source_member_id) as source_request_count
+      from household_join_requests jr
+      join household_members tm on tm.id = jr.target_member_id
+      left join household_members sm on sm.id = jr.source_member_id
+      where jr.requester_user_id = ${userId} and jr.status = 'pending'
+      order by jr.created_at desc
+      limit 1
+    `,
   ]);
 
   const categories: Category[] = catRows.map((c) => ({
@@ -219,6 +279,21 @@ async function loadSnapshot(
     updatedByName: e.updated_by_name,
   }));
 
+  const toJoinRequest = (r: (typeof joinRequestRows)[number]): JoinRequest => ({
+    id: r.id,
+    requesterName: r.requester_name,
+    targetMemberId: r.target_member_id,
+    targetMemberName: r.target_member_name,
+    requestedAt: iso(r.requested_at),
+    sourceMemberName: r.source_member_name,
+    sourceExpenseCount: num(r.source_expense_count),
+    sourceExpenseTotal: num(r.source_expense_total),
+    sourceRequestCount: num(r.source_request_count),
+    status: "pending",
+  });
+  const joinRequests = joinRequestRows.map(toJoinRequest);
+  const pendingJoinRequest = pendingJoinRows[0] ? toJoinRequest(pendingJoinRows[0]) : null;
+
   const homeRequests: HomeRequest[] = requestRows.map((r) => ({
     id: r.id,
     title: r.title,
@@ -241,6 +316,9 @@ async function loadSnapshot(
     },
     members,
     me: { memberId: mine.member_id, name: mine.member_name },
+    isOwner: mine.owner_user_id === userId,
+  joinRequests,
+  pendingJoinRequest,
     categories,
     expenses,
     homeRequests,
@@ -289,8 +367,8 @@ export const createHousehold = createServerFn({ method: "POST" })
     }
 
     await sql`
-      insert into households (id, monthly_income, savings_goal, join_code)
-      values (${householdId}, ${data.monthlyIncome}, ${data.savingsGoal}, ${code})
+      insert into households (id, monthly_income, savings_goal, join_code, owner_user_id)
+      values (${householdId}, ${data.monthlyIncome}, ${data.savingsGoal}, ${code}, ${context.userId})
     `;
     await sql`
       insert into household_members (id, household_id, name, sort_order)
@@ -341,22 +419,22 @@ export const createHousehold = createServerFn({ method: "POST" })
 const joinInput = z.object({
   code: z.string().trim().min(4).max(12),
   memberId: z.string().uuid(),
+  requesterName: z.string().trim().min(1).max(40),
 });
 
-export const joinHousehold = createServerFn({ method: "POST" })
+export const requestJoinHousehold = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((d: unknown) => joinInput.parse(d))
   .handler(async ({ context, data }) => {
     const sql = await getSql();
     const existing = await membership(sql, context.userId);
-    if (existing) throw new Error("أنت بالفعل ضمن بيت");
-
     const code = data.code.trim().toUpperCase();
     const houses = await sql<{ id: string }>`
       select id from households where join_code = ${code} limit 1
     `;
     const house = houses[0];
     if (!house) throw new Error("رمز الانضمام غير صحيح");
+    if (existing && existing.household_id === house.id) throw new Error("أنت بالفعل ضمن هذا البيت");
 
     const members = await sql<{ id: string }>`
       select id from household_members where household_id = ${house.id} and id = ${data.memberId}
@@ -370,11 +448,185 @@ export const joinHousehold = createServerFn({ method: "POST" })
       throw new Error("هذا الاسم مرتبط بحساب آخر");
     }
 
+    const pending = await sql<{ id: string }>`
+      select id from household_join_requests
+      where requester_user_id = ${context.userId}
+        and target_household_id = ${house.id}
+        and status = 'pending'
+      limit 1
+    `;
+    if (pending[0]) return { requestId: pending[0].id, pending: true };
+
+    const requestId = crypto.randomUUID();
+    await sql`
+      insert into household_join_requests (
+        id, requester_user_id, requester_name, source_household_id, source_member_id,
+        target_household_id, target_member_id
+      ) values (
+        ${requestId}, ${context.userId}, ${data.requesterName},
+        ${existing?.household_id ?? null}, ${existing?.member_id ?? null},
+        ${house.id}, ${data.memberId}
+      )
+    `;
+    await sendHouseholdPush({
+      householdId: house.id,
+      actorUserId: context.userId,
+      title: "طلب انضمام جديد",
+      body: `${data.requesterName} يريد الانضمام إلى دفتر البيت`,
+    });
+    return { requestId, pending: true };
+  });
+
+const joinRequestIdInput = z.object({ id: z.string().uuid() });
+
+export const getJoinRequestDetail = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .validator((d: unknown) => joinRequestIdInput.parse(d))
+  .handler(async ({ context, data }): Promise<JoinRequestDetail> => {
+    const sql = await getSql();
+    const owner = await membership(sql, context.userId);
+    if (!owner || owner.owner_user_id !== context.userId) throw new Error("ليس لديك صلاحية مراجعة الطلب");
+    const rows = await sql<{
+      id: string;
+      requester_name: string;
+      source_member_id: string | null;
+      source_member_name: string | null;
+      created_at: unknown;
+    }>`
+      select
+        jr.id,
+        jr.requester_name,
+        jr.source_member_id,
+        sm.name as source_member_name,
+        jr.created_at
+      from household_join_requests jr
+      left join household_members sm on sm.id = jr.source_member_id
+      where jr.id = ${data.id}
+        and jr.target_household_id = ${owner.household_id}
+        and jr.status = 'pending'
+      limit 1
+    `;
+    const request = rows[0];
+    if (!request) throw new Error("طلب الانضمام غير موجود أو تمت معالجته");
+
+    const [sourceExpenses, sourceRequests, targetSummary] = await Promise.all([
+      request.source_member_id
+        ? sql<{ description: string; amount: string | number; occurred_at: unknown }>`
+            select description, amount, occurred_at
+            from expenses
+            where created_by_member_id = ${request.source_member_id}
+            order by occurred_at desc
+            limit 100
+          `
+        : Promise.resolve([] as { description: string; amount: string | number; occurred_at: unknown }[]),
+      request.source_member_id
+        ? sql<{ title: string; quantity: string; completed: boolean | string | number; created_at: unknown }>`
+            select title, quantity, completed, created_at
+            from home_requests
+            where created_by_member_id = ${request.source_member_id}
+            order by created_at desc
+            limit 100
+          `
+        : Promise.resolve([] as { title: string; quantity: string; completed: boolean | string | number; created_at: unknown }[]),
+      sql<{ expense_count: string | number; expense_total: string | number; request_count: string | number }>`
+        select
+          (select count(*) from expenses where created_by_member_id = ${owner.member_id}) as expense_count,
+          coalesce((select sum(amount) from expenses where created_by_member_id = ${owner.member_id}), 0) as expense_total,
+          (select count(*) from home_requests where created_by_member_id = ${owner.member_id}) as request_count
+      `,
+    ]);
+    const target = targetSummary[0];
+    return {
+      id: request.id,
+      requesterName: request.requester_name,
+      sourceMemberName: request.source_member_name,
+      requestedAt: iso(request.created_at),
+      sourceExpenses: sourceExpenses.map((item) => ({
+        description: item.description,
+        amount: num(item.amount),
+        occurredAt: iso(item.occurred_at),
+      })),
+      sourceRequests: sourceRequests.map((item) => ({
+        title: item.title,
+        quantity: item.quantity,
+        completed: item.completed === true || item.completed === "t" || item.completed === "true" || item.completed === 1,
+        createdAt: iso(item.created_at),
+      })),
+      targetExpenseCount: num(target?.expense_count),
+      targetExpenseTotal: num(target?.expense_total),
+      targetRequestCount: num(target?.request_count),
+    };
+  });
+
+const resolveJoinInput = z.object({
+  id: z.string().uuid(),
+  decision: z.enum(["erase", "keep", "reject"]),
+});
+
+export const resolveJoinRequest = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((d: unknown) => resolveJoinInput.parse(d))
+  .handler(async ({ context, data }) => {
+    const sql = await getSql();
+    const owner = await membership(sql, context.userId);
+    if (!owner || owner.owner_user_id !== context.userId) throw new Error("ليس لديك صلاحية معالجة الطلب");
+    const rows = await sql<{
+      id: string;
+      requester_user_id: string;
+      source_household_id: string | null;
+      source_member_id: string | null;
+      target_household_id: string;
+      target_member_id: string;
+    }>`
+      select id, requester_user_id, source_household_id, source_member_id, target_household_id, target_member_id
+      from household_join_requests
+      where id = ${data.id} and target_household_id = ${owner.household_id} and status = 'pending'
+      limit 1
+    `;
+    const request = rows[0];
+    if (!request) throw new Error("طلب الانضمام غير موجود أو تمت معالجته");
+    if (data.decision === "reject") {
+      await sql`
+        update household_join_requests
+        set status = 'rejected', resolved_at = now(), resolved_by_user_id = ${context.userId}
+        where id = ${request.id}
+      `;
+      return { status: "rejected" as const };
+    }
+
+    const taken = await sql<{ user_id: string }>`
+      select user_id from household_users where member_id = ${request.target_member_id} limit 1
+    `;
+    if (taken[0] && taken[0].user_id !== request.requester_user_id) {
+      throw new Error("اسم العضو مرتبط بحساب آخر");
+    }
+
+    if (data.decision === "erase" && request.source_member_id) {
+      await sql`delete from expenses where created_by_member_id = ${request.source_member_id}`;
+      await sql`delete from home_requests where created_by_member_id = ${request.source_member_id}`;
+    }
+    await sql`delete from household_users where user_id = ${request.requester_user_id}`;
     await sql`
       insert into household_users (user_id, household_id, member_id)
-      values (${context.userId}, ${house.id}, ${data.memberId})
+      values (${request.requester_user_id}, ${request.target_household_id}, ${request.target_member_id})
     `;
-    return { householdId: house.id };
+    await sql`
+      update household_join_requests
+      set status = 'approved', resolution_mode = ${data.decision}, resolved_at = now(), resolved_by_user_id = ${context.userId}
+      where id = ${request.id}
+    `;
+    await sql`
+      update push_devices
+      set household_id = ${request.target_household_id}, updated_at = now()
+      where user_id = ${request.requester_user_id}
+    `;
+    await sendHouseholdPush({
+      householdId: request.target_household_id,
+      actorUserId: context.userId,
+      title: "تم قبول الانضمام",
+      body: data.decision === "erase" ? "تم قبولك بعد محو بياناتك القديمة" : "تم قبولك في دفتر البيت",
+    });
+    return { status: "approved" as const, mode: data.decision };
   });
 
 export const lookupJoinCode = createServerFn({ method: "GET" })
