@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as BudgetRouteImport } from './routes/budget'
 import { Route as ExpensesRouteImport } from './routes/expenses'
+import { Route as HomeRequestsRouteImport } from './routes/home-requests'
 import { Route as JoinRouteImport } from './routes/join'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
@@ -31,6 +32,11 @@ const BudgetRoute = BudgetRouteImport.update({
 const ExpensesRoute = ExpensesRouteImport.update({
   id: '/expenses',
   path: '/expenses',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HomeRequestsRoute = HomeRequestsRouteImport.update({
+  id: '/home-requests',
+  path: '/home-requests',
   getParentRoute: () => rootRouteImport,
 } as any)
 const JoinRoute = JoinRouteImport.update({
@@ -63,6 +69,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/budget': typeof BudgetRoute
   '/expenses': typeof ExpensesRoute
+  '/home-requests': typeof HomeRequestsRoute
   '/join': typeof JoinRoute
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
@@ -73,6 +80,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/budget': typeof BudgetRoute
   '/expenses': typeof ExpensesRoute
+  '/home-requests': typeof HomeRequestsRoute
   '/join': typeof JoinRoute
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
@@ -84,6 +92,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/budget': typeof BudgetRoute
   '/expenses': typeof ExpensesRoute
+  '/home-requests': typeof HomeRequestsRoute
   '/join': typeof JoinRoute
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
@@ -96,6 +105,7 @@ export interface FileRouteTypes {
     | '/'
     | '/budget'
     | '/expenses'
+    | '/home-requests'
     | '/join'
     | '/login'
     | '/onboarding'
@@ -106,6 +116,7 @@ export interface FileRouteTypes {
     | '/'
     | '/budget'
     | '/expenses'
+    | '/home-requests'
     | '/join'
     | '/login'
     | '/onboarding'
@@ -116,6 +127,7 @@ export interface FileRouteTypes {
     | '/'
     | '/budget'
     | '/expenses'
+    | '/home-requests'
     | '/join'
     | '/login'
     | '/onboarding'
@@ -127,6 +139,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   BudgetRoute: typeof BudgetRoute
   ExpensesRoute: typeof ExpensesRoute
+  HomeRequestsRoute: typeof HomeRequestsRoute
   JoinRoute: typeof JoinRoute
   LoginRoute: typeof LoginRoute
   OnboardingRoute: typeof OnboardingRoute
@@ -155,6 +168,13 @@ declare module '@tanstack/react-router' {
       path: '/expenses'
       fullPath: '/expenses'
       preLoaderRoute: typeof ExpensesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/home-requests': {
+      id: '/home-requests'
+      path: '/home-requests'
+      fullPath: '/home-requests'
+      preLoaderRoute: typeof HomeRequestsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/join': {
@@ -199,6 +219,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   BudgetRoute: BudgetRoute,
   ExpensesRoute: ExpensesRoute,
+  HomeRequestsRoute: HomeRequestsRoute,
   JoinRoute: JoinRoute,
   LoginRoute: LoginRoute,
   OnboardingRoute: OnboardingRoute,

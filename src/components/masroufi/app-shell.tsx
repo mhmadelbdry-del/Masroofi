@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { LayoutGrid, Receipt, Scale, Settings } from "lucide-react";
+import { ClipboardList, LayoutGrid, Receipt, Scale, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSnapshot } from "@/lib/masroufi/hooks";
 import { Logo } from "./logo";
@@ -9,6 +9,7 @@ const TABS = [
   { to: "/", label: "ملخص الشهر", icon: LayoutGrid },
   { to: "/expenses", label: "المصروفات", icon: Receipt },
   { to: "/budget", label: "حدود الميزانية", icon: Scale },
+  { to: "/home-requests", label: "طلبات المنزل", icon: ClipboardList },
 ] as const;
 
 export function AppShell({ children }: { children: React.ReactNode }) {

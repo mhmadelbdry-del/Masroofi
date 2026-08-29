@@ -4,6 +4,7 @@ import { isUnauthorized } from "@/lib/utils";
 import { useMonth } from "./month-store";
 import {
   addExpense,
+  addHomeRequest,
   archiveCategory,
   createHousehold,
   deleteExpense,
@@ -12,6 +13,8 @@ import {
   lookupJoinCode,
   saveReflection,
   setActiveMember,
+  toggleHomeRequest,
+  deleteHomeRequest,
   updateExpense,
   updateHousehold,
   upsertCategory,
@@ -119,6 +122,32 @@ export function useMasroufiMutations() {
     onError: (e) => fail(e, "تعذر التبديل"),
   });
 
+  const homeRequestAdd = useMutation({
+    mutationFn: (data: { title: string; quantity: string }) => addHomeRequest({ data }),
+    onSuccess: () => {
+      toast.success("تمت إضافة الطلب");
+      void invalidate();
+    },
+    onError: (e) => fail(e, "تعذر إضافة الطلب"),
+  });
+
+  const homeRequestToggle = useMutation({
+    mutationFn: (data: { id: string; completed: boolean }) => toggleHomeRequest({ data }),
+    onSuccess: () => {
+      void invalidate();
+    },
+    onError: (e) => fail(e, "تعذر تحديث الطلب"),
+  });
+
+  const homeRequestRemove = useMutation({
+    mutationFn: (id: string) => deleteHomeRequest({ data: { id } }),
+    onSuccess: () => {
+      toast.success("تم حذف الطلب");
+      void invalidate();
+    },
+    onError: (e) => fail(e, "تعذر حذف الطلب"),
+  });
+
   const reflection = useMutation({
     mutationFn: (data: { year: number; month: number; note: string }) =>
       saveReflection({ data }),
@@ -150,7 +179,22 @@ export function useMasroufiMutations() {
     onError: (e) => fail(e, "تعذر الانضمام"),
   });
 
-  return { add, update, remove, saveCat, hideCat, household, member, reflection, create, join, invalidate };
+  return {
+    add,
+    update,
+    remove,
+    saveCat,
+    hideCat,
+    household,
+    member,
+    reflection,
+    homeRequestAdd,
+    homeRequestToggle,
+    homeRequestRemove,
+    create,
+    join,
+    invalidate,
+  };
 }
 
 export function useJoinLookup(code: string) {

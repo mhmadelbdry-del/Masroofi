@@ -23,6 +23,19 @@ export type Category = {
   spent: number;
 };
 
+export type HomeRequest = {
+  id: string;
+  title: string;
+  quantity: string;
+  completed: boolean;
+  createdAt: string;
+  createdByMemberId: string;
+  createdByName: string;
+  completedAt: string | null;
+  completedByMemberId: string | null;
+  completedByName: string | null;
+};
+
 export type Expense = {
   id: string;
   categoryId: string;
@@ -43,6 +56,7 @@ export type MonthSnapshot = {
   me: { memberId: string; name: string } | null;
   categories: Category[];
   expenses: Expense[];
+  homeRequests: HomeRequest[];
   reflection: string;
   year: number;
   month: number;

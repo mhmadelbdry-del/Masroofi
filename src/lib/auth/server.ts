@@ -80,8 +80,6 @@ const authDisabled = env("VITE_AUTH_ENABLED") === "false";
 const grokIssuer = env("GROK_AUTH_ISSUER") ?? GROK_ISSUER_DEFAULT;
 const grokClientId = env("GROK_AUTH_CLIENT_ID") ?? PREVIEW_CLIENT_ID;
 const grokClientSecret = env("GROK_AUTH_CLIENT_SECRET") ?? PREVIEW_CLIENT_SECRET;
-const googleClientId = env("GOOGLE_CLIENT_ID");
-const googleClientSecret = env("GOOGLE_CLIENT_SECRET");
 
 /** True when federated sign-in is active (real auth is enforced). */
 export const authConfigured =
@@ -150,17 +148,29 @@ const database = databaseUrl
 /** Session token cookie name — also read by the live-preview popup completion page. */
 export const SESSION_TOKEN_COOKIE = "__Host-grok-auth.session_token";
 
+// Broker OAuth plugin remains active for the current deployment. Direct Google OAuth
+// is intentionally deferred until its Google Cloud credentials are configured.
+const grokOAuthPlugin = authConfigured
+  ? genericOAuth({
+      config: GROK_PROVIDERS.map(({ providerId, idp }) => ({
+        providerId,
+        clientId: grokClientId as string,
+        clientSecret: grokClientSecret as string,
+        authorizationUrl: grokAuthorizationUrl,
+        tokenUrl: grokTokenUrl,
+        userInfoUrl: grokUserInfoUrl,
+        scopes: ["openid", "profile", "email"],
+        authorizationUrlParams: { idp, prompt: "login" },
+      })),
+    })
+  : null;
+
 export const auth = betterAuth({
   baseURL,
   // Deployed apps inject BETTER_AUTH_SECRET. Preview: process-stable secret on
   // globalThis so HMR doesn't invalidate PGLite-backed sessions (see above).
   secret: env("BETTER_AUTH_SECRET") ?? previewAuthSecret(),
   database,
-  socialProviders:
-    googleClientId && googleClientSecret
-      ? { google: { clientId: googleClientId, clientSecret: googleClientSecret } }
-      : undefined,
-
   // CSRF / origin check for credentialed auth POSTs (email sign-up/sign-in, …).
   // See `trustedOrigins` construction above — must cover live preview hosts AND
   // local loopback variants, or clients get "Invalid origin".
@@ -216,8 +226,7 @@ export const auth = betterAuth({
   plugins: [
     gateIdentitySessions(),
 
-    // One genericOAuth provider per upstream (when auth is on), all federating
-    // to the broker with the SAME client and differing only by the `idp` hint.
+    ...(grokOAuthPlugin ? [grokOAuthPlugin] : []),
 
     // Accept `Authorization: Bearer <session-token>` as an alternative to the
     // cookie. Needed for the LIVE PREVIEW: the app runs in an embedded iframe

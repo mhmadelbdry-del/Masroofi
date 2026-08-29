@@ -4,7 +4,7 @@ import { getSql, type Sql } from "@/lib/db";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { DEFAULT_CATEGORIES, DEMO_EXPENSES } from "./defaults";
 import { cairoLocalToDate, cairoParts, monthBoundsIso } from "./format";
-import type { Category, CategoryKind, Expense, Member, MonthSnapshot } from "./types";
+import type { Category, CategoryKind, Expense, HomeRequest, Member, MonthSnapshot } from "./types";
 
 function num(v: unknown): number {
   const n = typeof v === "number" ? v : Number(v);
@@ -87,6 +87,7 @@ async function loadSnapshot(
       me: null,
       categories: [],
       expenses: [],
+      homeRequests: [],
       reflection: "",
       year,
       month,
@@ -96,7 +97,7 @@ async function loadSnapshot(
   const { start, end } = monthBoundsIso(year, month);
   const hid = mine.household_id;
 
-  const [members, catRows, expRows, refRows] = await Promise.all([
+  const [members, catRows, expRows, requestRows, refRows] = await Promise.all([
     loadMembers(sql, hid),
     sql<{
       id: string;
@@ -158,6 +159,35 @@ async function loadSnapshot(
         and e.occurred_at < ${end}::timestamptz
       order by e.occurred_at desc
     `,
+    sql<{
+      id: string;
+      title: string;
+      quantity: string;
+      completed: boolean | string | number;
+      completed_at: unknown;
+      created_at: unknown;
+      created_by_member_id: string;
+      created_by_name: string;
+      completed_by_member_id: string | null;
+      completed_by_name: string | null;
+    }>`
+      select
+        r.id,
+        r.title,
+        r.quantity,
+        r.completed,
+        r.completed_at,
+        r.created_at,
+        r.created_by_member_id,
+        cm.name as created_by_name,
+        r.completed_by_member_id,
+        xm.name as completed_by_name
+      from home_requests r
+      join household_members cm on cm.id = r.created_by_member_id
+      left join household_members xm on xm.id = r.completed_by_member_id
+      where r.household_id = ${hid}
+      order by r.completed asc, r.created_at desc
+    `,
     sql<{ note: string }>`
       select note from reflections
       where household_id = ${hid} and year = ${year} and month = ${month}
@@ -188,6 +218,19 @@ async function loadSnapshot(
     updatedByName: e.updated_by_name,
   }));
 
+  const homeRequests: HomeRequest[] = requestRows.map((r) => ({
+    id: r.id,
+    title: r.title,
+    quantity: r.quantity,
+    completed: r.completed === true || r.completed === "t" || r.completed === "true" || r.completed === 1,
+    createdAt: iso(r.created_at),
+    createdByMemberId: r.created_by_member_id,
+    createdByName: r.created_by_name,
+    completedAt: r.completed_at == null ? null : iso(r.completed_at),
+    completedByMemberId: r.completed_by_member_id,
+    completedByName: r.completed_by_name,
+  }));
+
   return {
     household: {
       id: hid,
@@ -199,6 +242,7 @@ async function loadSnapshot(
     me: { memberId: mine.member_id, name: mine.member_name },
     categories,
     expenses,
+    homeRequests,
     reflection: refRows[0]?.note ?? "",
     year,
     month,
@@ -344,6 +388,64 @@ export const lookupJoinCode = createServerFn({ method: "GET" })
     if (!houses[0]) return { found: false as const, members: [] as Member[] };
     const members = await loadMembers(sql, houses[0].id);
     return { found: true as const, members };
+  });
+
+const homeRequestInput = z.object({
+  title: z.string().trim().min(1).max(120),
+  quantity: z.string().trim().min(1).max(40).default("1"),
+});
+
+export const addHomeRequest = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((d: unknown) => homeRequestInput.parse(d))
+  .handler(async ({ context, data }) => {
+    const sql = await getSql();
+    const mine = await membership(sql, context.userId);
+    if (!mine) throw new Error("لا يوجد بيت مرتبط بحسابك");
+    const id = crypto.randomUUID();
+    await sql`
+      insert into home_requests (id, household_id, title, quantity, created_by_member_id)
+      values (${id}, ${mine.household_id}, ${data.title}, ${data.quantity}, ${mine.member_id})
+    `;
+    return { id };
+  });
+
+const toggleHomeRequestInput = z.object({
+  id: z.string().uuid(),
+  completed: z.boolean(),
+});
+
+export const toggleHomeRequest = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((d: unknown) => toggleHomeRequestInput.parse(d))
+  .handler(async ({ context, data }) => {
+    const sql = await getSql();
+    const mine = await membership(sql, context.userId);
+    if (!mine) throw new Error("لا يوجد بيت مرتبط بحسابك");
+    await sql`
+      update home_requests
+      set
+        completed = ${data.completed},
+        completed_at = ${data.completed ? new Date().toISOString() : null}::timestamptz,
+        completed_by_member_id = ${data.completed ? mine.member_id : null},
+        updated_at = now()
+      where id = ${data.id} and household_id = ${mine.household_id}
+    `;
+    return { ok: true };
+  });
+
+export const deleteHomeRequest = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
+  .handler(async ({ context, data }) => {
+    const sql = await getSql();
+    const mine = await membership(sql, context.userId);
+    if (!mine) throw new Error("لا يوجد بيت مرتبط بحسابك");
+    await sql`
+      delete from home_requests
+      where id = ${data.id} and household_id = ${mine.household_id}
+    `;
+    return { ok: true };
   });
 
 const addExpenseInput = z.object({
