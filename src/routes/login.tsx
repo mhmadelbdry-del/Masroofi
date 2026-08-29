@@ -1,6 +1,6 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
-import { GROK_PROVIDERS, authClient, authEnabled, signIn } from "@/lib/auth/client";
+import { authClient, authEnabled } from "@/lib/auth/client";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -54,22 +54,6 @@ function Login() {
       <div className="paper-card rounded-xl p-5">
         {authEnabled ? (
           <div className="space-y-3">
-            {GROK_PROVIDERS.map((p) => (
-              <Button
-                key={p.providerId}
-                type="button"
-                variant="outline"
-                className="w-full"
-                onClick={() => signIn(p.providerId, { callbackURL: "/" })}
-              >
-                متابعة عبر {p.label === "Google" ? "جوجل" : "X"}
-              </Button>
-            ))}
-            <div className="flex items-center gap-3 py-1">
-              <span className="h-px flex-1 bg-border" />
-              <span className="text-xs text-subtle">أو بالبريد</span>
-              <span className="h-px flex-1 bg-border" />
-            </div>
             <div className="grid grid-cols-2 gap-1 rounded-md bg-bg-warm p-1">
               <button
                 type="button"
