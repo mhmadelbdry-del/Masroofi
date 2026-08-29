@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { getSql, type Sql } from "@/lib/db";
+import { sendHouseholdPush } from "./push.server";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { DEFAULT_CATEGORIES, DEMO_EXPENSES } from "./defaults";
 import { cairoLocalToDate, cairoParts, monthBoundsIso } from "./format";
@@ -390,6 +391,30 @@ export const lookupJoinCode = createServerFn({ method: "GET" })
     return { found: true as const, members };
   });
 
+const pushDeviceInput = z.object({
+  token: z.string().trim().min(20).max(4096),
+  platform: z.enum(["android", "ios", "web"]).default("android"),
+});
+
+export const registerPushDevice = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((d: unknown) => pushDeviceInput.parse(d))
+  .handler(async ({ context, data }) => {
+    const sql = await getSql();
+    const mine = await membership(sql, context.userId);
+    if (!mine) throw new Error("لا يوجد بيت مرتبط بحسابك");
+    await sql`
+      insert into push_devices (token, user_id, household_id, platform, updated_at)
+      values (${data.token}, ${context.userId}, ${mine.household_id}, ${data.platform}, now())
+      on conflict (token) do update set
+        user_id = excluded.user_id,
+        household_id = excluded.household_id,
+        platform = excluded.platform,
+        updated_at = now()
+    `;
+    return { ok: true };
+  });
+
 const homeRequestInput = z.object({
   title: z.string().trim().min(1).max(120),
   quantity: z.string().trim().min(1).max(40).default("1"),
@@ -407,6 +432,12 @@ export const addHomeRequest = createServerFn({ method: "POST" })
       insert into home_requests (id, household_id, title, quantity, created_by_member_id)
       values (${id}, ${mine.household_id}, ${data.title}, ${data.quantity}, ${mine.member_id})
     `;
+    await sendHouseholdPush({
+      householdId: mine.household_id,
+      actorUserId: context.userId,
+      title: "طلب منزلي جديد",
+      body: `${mine.member_name} أضاف: ${data.title} (${data.quantity})`,
+    });
     return { id };
   });
 
@@ -478,6 +509,12 @@ export const addExpense = createServerFn({ method: "POST" })
         ${data.amount}, ${mine.member_id}, ${mine.member_id}
       )
     `;
+    await sendHouseholdPush({
+      householdId: mine.household_id,
+      actorUserId: context.userId,
+      title: "مصروف جديد",
+      body: `${mine.member_name} سجّل: ${data.description} — ${data.amount}`,
+    });
     return { id };
   });
 

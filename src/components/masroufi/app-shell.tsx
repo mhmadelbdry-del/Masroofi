@@ -1,7 +1,9 @@
 import { Link, useRouterState } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { ClipboardList, LayoutGrid, Receipt, Scale, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSnapshot } from "@/lib/masroufi/hooks";
+import { initializePushNotifications } from "@/lib/masroufi/push-client";
 import { Logo } from "./logo";
 import { MemberDot } from "./member-dot";
 
@@ -16,6 +18,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { data } = useSnapshot();
   const me = data?.me;
+
+  useEffect(() => {
+    void initializePushNotifications();
+  }, []);
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-lg flex-col bg-bg">
