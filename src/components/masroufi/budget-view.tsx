@@ -4,11 +4,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { formatMoney, usageTone } from "@/lib/masroufi/format";
+import { formatMoney, usagePct, usageTone } from "@/lib/masroufi/format";
 import { useMasroufiMutations, useSnapshot } from "@/lib/masroufi/hooks";
 import { KIND_LABEL, type Category, type CategoryKind } from "@/lib/masroufi/types";
 import { CategoryBar } from "./category-bar";
 import { cn } from "@/lib/utils";
+
+const GROUPS: { id: CategoryKind; label: string }[] = [
+  { id: "necessity", label: "الضروريات" },
+  { id: "extra", label: "الكماليات" },
+  { id: "unexpected", label: "غير متوقع" },
+];
 
 const FILTERS = [
   { id: "all", label: "الكل" },
@@ -34,6 +40,12 @@ export function BudgetView() {
 
   const cap = data.categories.reduce((s, c) => s + c.monthlyLimit, 0);
   const spent = data.categories.reduce((s, c) => s + c.spent, 0);
+  const groupSummaries = GROUPS.map((group) => {
+    const categories = data.categories.filter((c) => c.kind === group.id);
+    const limit = categories.reduce((s, c) => s + c.monthlyLimit, 0);
+    const actual = categories.reduce((s, c) => s + c.spent, 0);
+    return { ...group, limit, actual, pct: usagePct(actual, limit), tone: usageTone(actual, limit) };
+  });
 
   return (
     <div className="space-y-5">
@@ -56,6 +68,39 @@ export function BudgetView() {
           <p className="mt-1 text-xs text-subtle">{data.categories.length} فئات</p>
         </div>
       </div>
+
+      <section className="space-y-3">
+        <div>
+          <h2 className="font-semibold">ملخص الفئات الرئيسية</h2>
+          <p className="mt-1 text-sm text-muted">إجمالي كل فئة رئيسية مقارنة بسقوف الفئات الفرعية التابعة لها.</p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-3">
+          {groupSummaries.map((group) => (
+            <article key={group.id} className="paper-card rounded-lg p-4">
+              <div className="flex items-start justify-between gap-2">
+                <h3 className="font-semibold">{group.label}</h3>
+                <span className="num text-sm font-semibold text-fg">{group.pct}%</span>
+              </div>
+              <p className="mt-2 text-xs text-muted">
+                المصروف <span className="num font-semibold text-fg">{formatMoney(group.actual)}</span>
+                <span className="mx-1">من</span>
+                <span className="num font-semibold text-fg">{formatMoney(group.limit)}</span>
+              </p>
+              <div className="mt-3 h-2 overflow-hidden rounded-full bg-bg-warm">
+                <div
+                  className={cn(
+                    "h-full rounded-full transition-[width] duration-300",
+                    group.tone === "ok" && "bg-primary",
+                    group.tone === "warn" && "bg-warn",
+                    group.tone === "over" && "bg-danger",
+                  )}
+                  style={{ width: `${group.pct}%` }}
+                />
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
 
       <div className="flex gap-2 overflow-x-auto pb-1">
         {FILTERS.map((f) => (

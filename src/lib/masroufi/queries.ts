@@ -3,8 +3,7 @@ import { z } from "zod";
 import { getSql, type Sql } from "@/lib/db";
 import { sendHouseholdPush } from "./push.server";
 import { authMiddleware } from "@/lib/auth/middleware";
-import { DEFAULT_CATEGORIES, DEMO_EXPENSES } from "./defaults";
-import { cairoLocalToDate, cairoParts, monthBoundsIso } from "./format";
+import { DEFAULT_CATEGORIES } from "./defaults";
 import type { Category, CategoryKind, Expense, HomeRequest, JoinRequest, JoinRequestDetail, Member, MonthSnapshot } from "./types";
 
 function num(v: unknown): number {
@@ -15,6 +14,11 @@ function num(v: unknown): number {
 function iso(v: unknown): string {
   if (v instanceof Date) return v.toISOString();
   return String(v);
+}
+
+function shiftAccountingMonth(year: number, month: number, delta: number): { year: number; month: number } {
+  const d = new Date(Date.UTC(year, month - 1 + delta, 1));
+  return { year: d.getUTCFullYear(), month: d.getUTCMonth() + 1 };
 }
 
 function joinCode(): string {
@@ -100,7 +104,6 @@ async function loadSnapshot(
     };
   }
 
-  const { start, end } = monthBoundsIso(year, month);
   const hid = mine.household_id;
 
   const [members, catRows, expRows, requestRows, refRows, joinRequestRows, pendingJoinRows] = await Promise.all([
@@ -123,8 +126,8 @@ async function loadSnapshot(
           select sum(e.amount) from expenses e
           where e.category_id = c.id
             and e.household_id = ${hid}
-            and e.occurred_at >= ${start}::timestamptz
-            and e.occurred_at < ${end}::timestamptz
+            and e.accounting_year = ${year}
+            and e.accounting_month = ${month}
         ), 0) as spent
       from categories c
       where c.household_id = ${hid} and c.archived = false
@@ -138,6 +141,8 @@ async function loadSnapshot(
       description: string;
       amount: string | number;
       occurred_at: unknown;
+      accounting_year: number;
+      accounting_month: number;
       created_by_member_id: string;
       created_by_name: string;
       updated_by_member_id: string;
@@ -151,6 +156,8 @@ async function loadSnapshot(
         e.description,
         e.amount,
         e.occurred_at,
+        e.accounting_year,
+        e.accounting_month,
         e.created_by_member_id,
         cm.name as created_by_name,
         e.updated_by_member_id,
@@ -161,8 +168,8 @@ async function loadSnapshot(
       join household_members um on um.id = e.updated_by_member_id
       join household_users hu on hu.household_id = e.household_id
       where hu.user_id = ${userId}
-        and e.occurred_at >= ${start}::timestamptz
-        and e.occurred_at < ${end}::timestamptz
+        and e.accounting_year = ${year}
+        and e.accounting_month = ${month}
       order by e.occurred_at desc
     `,
     sql<{
@@ -273,6 +280,8 @@ async function loadSnapshot(
     description: e.description,
     amount: num(e.amount),
     occurredAt: iso(e.occurred_at),
+    accountingYear: num(e.accounting_year),
+    accountingMonth: num(e.accounting_month),
     createdByMemberId: e.created_by_member_id,
     createdByName: e.created_by_name,
     updatedByMemberId: e.updated_by_member_id,
@@ -386,30 +395,6 @@ export const createHousehold = createServerFn({ method: "POST" })
       await sql`
         insert into categories (id, household_id, name, kind, monthly_limit, sort_order)
         values (${crypto.randomUUID()}, ${householdId}, ${c.name}, ${c.kind}, ${c.monthlyLimit}, ${i})
-      `;
-    }
-
-    const cats = await sql<{ id: string; sort_order: number }>`
-      select id, sort_order from categories
-      where household_id = ${householdId}
-      order by sort_order asc
-    `;
-    const { year, month, day } = cairoParts();
-    const memberIds = [selfId, partnerId];
-    for (const row of DEMO_EXPENSES) {
-      const useDay = Math.min(row.day, day);
-      const cat = cats[row.categoryIndex];
-      if (!cat) continue;
-      const when = cairoLocalToDate(year, month, useDay, row.hour, row.minute);
-      const mid = memberIds[row.memberIndex];
-      await sql`
-        insert into expenses (
-          id, household_id, category_id, description, amount, occurred_at,
-          created_by_member_id, updated_by_member_id
-        ) values (
-          ${crypto.randomUUID()}, ${householdId}, ${cat.id}, ${row.description},
-          ${row.amount}, ${when.toISOString()}::timestamptz, ${mid}, ${mid}
-        )
       `;
     }
 
@@ -757,6 +742,8 @@ const addExpenseInput = z.object({
   description: z.string().trim().min(1).max(120),
   amount: z.number().positive().max(1_000_000),
   categoryId: z.string().uuid(),
+  accountingYear: z.number().int().min(2020).max(2100),
+  accountingMonth: z.number().int().min(1).max(12),
 });
 
 export const addExpense = createServerFn({ method: "POST" })
@@ -777,10 +764,12 @@ export const addExpense = createServerFn({ method: "POST" })
     await sql`
       insert into expenses (
         id, household_id, category_id, description, amount,
+        accounting_year, accounting_month,
         created_by_member_id, updated_by_member_id
       ) values (
         ${id}, ${mine.household_id}, ${data.categoryId}, ${data.description},
-        ${data.amount}, ${mine.member_id}, ${mine.member_id}
+        ${data.amount}, ${data.accountingYear}, ${data.accountingMonth},
+        ${mine.member_id}, ${mine.member_id}
       )
     `;
     await sendHouseholdPush({
@@ -792,12 +781,60 @@ export const addExpense = createServerFn({ method: "POST" })
     return { id };
   });
 
+const moveExpenseInput = z.object({
+  id: z.string().uuid(),
+  direction: z.enum(["previous", "next"]),
+});
+
+export const moveExpense = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((d: unknown) => moveExpenseInput.parse(d))
+  .handler(async ({ context, data }) => {
+    const sql = await getSql();
+    const mine = await membership(sql, context.userId);
+    if (!mine) throw new Error("لا يوجد بيت مرتبط بحسابك");
+
+    const rows = await sql<{
+      accounting_year: number;
+      accounting_month: number;
+      description: string;
+    }>`
+      select accounting_year, accounting_month, description
+      from expenses
+      where id = ${data.id} and household_id = ${mine.household_id}
+      limit 1
+    `;
+    const expense = rows[0];
+    if (!expense) throw new Error("المصروف غير موجود");
+
+    const target = shiftAccountingMonth(
+      num(expense.accounting_year),
+      num(expense.accounting_month),
+      data.direction === "next" ? 1 : -1,
+    );
+    await sql`
+      update expenses
+      set accounting_year = ${target.year},
+          accounting_month = ${target.month},
+          updated_by_member_id = ${mine.member_id},
+          updated_at = now()
+      where id = ${data.id} and household_id = ${mine.household_id}
+    `;
+    await sendHouseholdPush({
+      householdId: mine.household_id,
+      actorUserId: context.userId,
+      title: "تم نقل مصروف",
+      body: `${mine.member_name} نقل «${expense.description}» إلى ${target.month}/${target.year}`,
+    });
+    return target;
+  });
+
 const updateExpenseInput = z.object({
   id: z.string().uuid(),
   description: z.string().trim().min(1).max(120),
-  amount: z.number().positive().max(1_000_000),
-  categoryId: z.string().uuid(),
-});
+      amount: z.number().positive().max(1_000_000),
+      categoryId: z.string().uuid(),
+  });
 
 export const updateExpense = createServerFn({ method: "POST" })
   .middleware([authMiddleware])

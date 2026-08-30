@@ -91,7 +91,7 @@ export function SummaryView() {
           categories={data.categories}
           me={data.me}
           pending={mut.add.isPending}
-          onSubmit={(payload) => mut.add.mutate(payload)}
+          onSubmit={(payload) => mut.add.mutate({ ...payload, accountingYear: year, accountingMonth: month })}
         />
       </section>
 
@@ -140,7 +140,17 @@ export function SummaryView() {
           </p>
         ) : (
           data.expenses.slice(0, 6).map((e) => (
-            <ExpenseRow key={e.id} expense={e} onClick={() => setEditing(e)} />
+            <ExpenseRow
+              key={e.id}
+              expense={e}
+              onClick={() => setEditing(e)}
+              onMovePrevious={() => mut.move.mutate({ id: e.id, direction: "previous" })}
+              onMoveNext={() => mut.move.mutate({ id: e.id, direction: "next" })}
+              onDelete={() => {
+                if (window.confirm(`حذف مصروف «${e.description}»؟`)) mut.remove.mutate(e.id);
+              }}
+              busy={mut.move.isPending || mut.remove.isPending}
+            />
           ))
         )}
       </section>
@@ -168,6 +178,7 @@ export function SummaryView() {
                 variant="outline"
                 className="w-full text-danger"
                 onClick={() => {
+                  if (!window.confirm(`حذف مصروف «${editing.description}»؟`)) return;
                   mut.remove.mutate(editing.id);
                   setEditing(null);
                 }}

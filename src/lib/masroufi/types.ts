@@ -78,6 +78,8 @@ export type Expense = {
   description: string;
   amount: number;
   occurredAt: string;
+  accountingYear: number;
+  accountingMonth: number;
   createdByMemberId: string;
   createdByName: string;
   updatedByMemberId: string;

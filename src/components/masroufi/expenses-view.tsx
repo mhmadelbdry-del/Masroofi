@@ -44,7 +44,7 @@ export function ExpensesView() {
           categories={data.categories}
           me={data.me}
           pending={mut.add.isPending}
-          onSubmit={(payload) => mut.add.mutate(payload)}
+          onSubmit={(payload) => mut.add.mutate({ ...payload, accountingYear: year, accountingMonth: month })}
         />
       </section>
 
@@ -69,7 +69,19 @@ export function ExpensesView() {
             لا توجد عمليات في هذا العرض.
           </p>
         ) : (
-          list.map((e) => <ExpenseRow key={e.id} expense={e} onClick={() => setEditing(e)} />)
+          list.map((e) => (
+            <ExpenseRow
+              key={e.id}
+              expense={e}
+              onClick={() => setEditing(e)}
+              onMovePrevious={() => mut.move.mutate({ id: e.id, direction: "previous" })}
+              onMoveNext={() => mut.move.mutate({ id: e.id, direction: "next" })}
+              onDelete={() => {
+                if (window.confirm(`حذف مصروف «${e.description}»؟`)) mut.remove.mutate(e.id);
+              }}
+              busy={mut.move.isPending || mut.remove.isPending}
+            />
+          ))
         )}
       </section>
 
@@ -80,7 +92,7 @@ export function ExpensesView() {
             me={data.me}
             pending={mut.add.isPending}
             onSubmit={(payload) => {
-              mut.add.mutate(payload);
+              mut.add.mutate({ ...payload, accountingYear: year, accountingMonth: month });
               setOpen(false);
             }}
           />
@@ -110,6 +122,7 @@ export function ExpensesView() {
                 variant="outline"
                 className="w-full text-danger"
                 onClick={() => {
+                  if (!window.confirm(`حذف مصروف «${editing.description}»؟`)) return;
                   mut.remove.mutate(editing.id);
                   setEditing(null);
                 }}

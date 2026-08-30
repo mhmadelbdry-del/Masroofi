@@ -11,6 +11,7 @@ import {
   getMonthSnapshot,
   getJoinRequestDetail,
   leaveHousehold,
+  moveExpense,
   lookupJoinCode,
   requestJoinHousehold,
   resolveJoinRequest,
@@ -48,13 +49,27 @@ export function useMasroufiMutations() {
   const invalidate = () => qc.invalidateQueries({ queryKey: ["snapshot"] });
 
   const add = useMutation({
-    mutationFn: (data: { description: string; amount: number; categoryId: string }) =>
-      addExpense({ data }),
+    mutationFn: (data: {
+      description: string;
+      amount: number;
+      categoryId: string;
+      accountingYear: number;
+      accountingMonth: number;
+    }) => addExpense({ data }),
     onSuccess: () => {
       toast.success("تم حفظ المصروف");
       void invalidate();
     },
     onError: (e) => fail(e, "تعذر حفظ المصروف"),
+  });
+
+  const move = useMutation({
+    mutationFn: (data: { id: string; direction: "previous" | "next" }) => moveExpense({ data }),
+    onSuccess: () => {
+      toast.success("تم نقل المصروف مع الاحتفاظ بتاريخ تسجيله");
+      void invalidate();
+    },
+    onError: (e) => fail(e, "تعذر نقل المصروف"),
   });
 
   const update = useMutation({
@@ -203,6 +218,7 @@ export function useMasroufiMutations() {
 
   return {
     add,
+    move,
     update,
     remove,
     saveCat,

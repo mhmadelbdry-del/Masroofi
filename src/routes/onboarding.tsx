@@ -21,10 +21,10 @@ function OnboardingForm() {
   const { data, isPending } = useSnapshot();
   const nav = useNavigate();
   const mut = useMasroufiMutations();
-  const [selfName, setSelfName] = useState("محمد");
-  const [partnerName, setPartnerName] = useState("إسراء");
-  const [income, setIncome] = useState("20000");
-  const [goal, setGoal] = useState("7000");
+  const [selfName, setSelfName] = useState("");
+  const [partnerName, setPartnerName] = useState("");
+  const [income, setIncome] = useState("");
+  const [goal, setGoal] = useState("");
 
   if (isPending) return <Splash />;
   if (data?.household) return <Navigate to="/" />;
@@ -35,7 +35,7 @@ function OnboardingForm() {
         <Logo withWord />
         <h1 className="mt-5 text-2xl font-semibold">إعداد الأسرة</h1>
         <p className="mt-2 text-sm text-muted">
-          اسمك، اسم زوجتك، والدخل الشهري. بعدها يصير الدفتر جاهزاً على جواليكما.
+          أدخل الراتب الحالي والمبلغ الذي تريد توفيره شهريًا، ليحسب التطبيق ميزانية البيت بوضوح.
         </p>
       </div>
       <Link
@@ -70,12 +70,12 @@ function OnboardingForm() {
           <Input id="partner" value={partnerName} onChange={(e) => setPartnerName(e.target.value)} required />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="income">الدخل الشهري</Label>
+          <Label htmlFor="income">الراتب الشهري الحالي</Label>
           <Input id="income" type="number" min="0" value={income} onChange={(e) => setIncome(e.target.value)} required />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="goal">هدف الادخار الشهري</Label>
-          <Input id="goal" type="number" min="0" value={goal} onChange={(e) => setGoal(e.target.value)} />
+          <Label htmlFor="goal">المبلغ المراد توفيره شهريًا</Label>
+          <Input id="goal" type="number" min="0" value={goal} onChange={(e) => setGoal(e.target.value)} required />
         </div>
         <Button type="submit" className="w-full" disabled={mut.create.isPending}>
           {mut.create.isPending ? "نجهّز الدفتر…" : "ابدأ مصروفي"}
