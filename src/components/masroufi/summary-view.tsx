@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -8,14 +8,15 @@ import {
   daysLeftInMonth,
   formatMoney,
   formatMonthTitle,
+  formatExpenseWhen,
   shiftMonth,
 } from "@/lib/masroufi/format";
 import { useMasroufiMutations, useSnapshot } from "@/lib/masroufi/hooks";
 import { useMonth } from "@/lib/masroufi/month-store";
 import { ExpenseForm } from "./expense-form";
-import { ExpenseRow } from "./expense-row";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import type { Expense } from "@/lib/masroufi/types";
+import { KIND_LABEL } from "@/lib/masroufi/types";
 
 export function SummaryView() {
   const { year, month, setMonth } = useMonth();
@@ -23,6 +24,7 @@ export function SummaryView() {
   const mut = useMasroufiMutations();
   const [note, setNote] = useState<string | null>(null);
   const [editing, setEditing] = useState<Expense | null>(null);
+  const [recentOpen, setRecentOpen] = useState(false);
 
   if (!data?.household || !data.me) return null;
 
@@ -94,32 +96,59 @@ export function SummaryView() {
         />
       </section>
 
-      <section className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="font-semibold">آخر 5 مصروفات</h2>
+      <section className="paper-card overflow-hidden rounded-lg">
+        <div className="flex items-center gap-3 px-4 py-2">
+          <button
+            type="button"
+            className="flex min-h-11 flex-1 items-center gap-2 text-right"
+            onClick={() => setRecentOpen((open) => !open)}
+            aria-expanded={recentOpen}
+          >
+            <ChevronDown className={`size-4 text-subtle transition-transform ${recentOpen ? "rotate-180" : ""}`} />
+            <span className="font-semibold">آخر 5 مصروفات</span>
+          </button>
           <Link to="/expenses" className="text-sm text-primary">
             كل المصروفات
           </Link>
         </div>
-        {data.expenses.length === 0 ? (
-          <p className="paper-card rounded-lg p-6 text-center text-sm text-muted">
-            لا مصروفات في هذا الشهر بعد.
-          </p>
-        ) : (
-          data.expenses.slice(0, 5).map((e) => (
-            <ExpenseRow
-              key={e.id}
-              expense={e}
-              onClick={() => setEditing(e)}
-              onMovePrevious={() => mut.move.mutate({ id: e.id, direction: "previous" })}
-              onMoveNext={() => mut.move.mutate({ id: e.id, direction: "next" })}
-              onDelete={() => {
-                if (window.confirm(`حذف مصروف «${e.description}»؟`)) mut.remove.mutate(e.id);
-              }}
-              busy={mut.move.isPending || mut.remove.isPending}
-            />
-          ))
-        )}
+        {recentOpen ? (
+          data.expenses.length === 0 ? (
+            <p className="border-t border-border/70 p-6 text-center text-sm text-muted">لا مصروفات في هذا الشهر بعد.</p>
+          ) : (
+            <div className="overflow-x-auto border-t border-border/70">
+              <table className="w-full min-w-[620px] text-right text-xs">
+                <thead className="bg-bg-warm text-muted">
+                  <tr>
+                    <th className="px-3 py-3 font-medium">المصروف</th>
+                    <th className="px-3 py-3 font-medium">الفئة الرئيسية</th>
+                    <th className="px-3 py-3 font-medium">التاريخ والوقت</th>
+                    <th className="px-3 py-3 font-medium">من سجله</th>
+                    <th className="px-3 py-3 font-medium">قيمته</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.expenses.slice(0, 5).map((expense) => {
+                    const when = formatExpenseWhen(expense.occurredAt);
+                    return (
+                      <tr
+                        key={expense.id}
+                        className="cursor-pointer border-t border-border/60 hover:bg-bg-warm"
+                        onClick={() => setEditing(expense)}
+                        title="اضغط لعرض تفاصيل المصروف"
+                      >
+                        <td className="max-w-40 truncate px-3 py-3 font-medium">{expense.description}</td>
+                        <td className="px-3 py-3 text-muted">{KIND_LABEL[expense.categoryKind]}</td>
+                        <td className="whitespace-nowrap px-3 py-3 text-muted"><span dir="ltr">{when.date} — {when.time}</span></td>
+                        <td className="px-3 py-3 text-muted">{expense.createdByName}</td>
+                        <td className="num whitespace-nowrap px-3 py-3 font-semibold">{formatMoney(expense.amount)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )
+        ) : null}
       </section>
 
       <section className="paper-card rounded-lg p-4">

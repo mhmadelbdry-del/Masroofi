@@ -17,11 +17,11 @@ export function ExpenseForm({
   me: Member | { name: string };
   pending?: boolean;
   submitLabel?: string;
-  initial?: { description: string; amount: number; categoryId: string };
+  initial?: { description: string; amount?: number; categoryId?: string };
   onSubmit: (data: { description: string; amount: number; categoryId: string }) => void;
 }) {
   const [description, setDescription] = useState(initial?.description ?? "");
-  const [amount, setAmount] = useState(initial ? String(initial.amount) : "");
+  const [amount, setAmount] = useState(initial?.amount ? String(initial.amount) : "");
   const [categoryId, setCategoryId] = useState(initial?.categoryId ?? "");
 
   return (
