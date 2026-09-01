@@ -122,8 +122,8 @@ export function SummaryView() {
                   <tr>
                     <th className="px-3 py-3 font-medium">المصروف</th>
                     <th className="px-3 py-3 font-medium">قيمته</th>
-                    <th className="px-3 py-3 font-medium">تاريخه</th>
-                    <th className="px-3 py-3 font-medium">وقته</th>
+                    <th className="px-3 py-3 text-center font-medium">تاريخه</th>
+                    <th className="px-3 py-3 text-center font-medium">وقته</th>
                     <th className="px-3 py-3 font-medium">فئته</th>
                     <th className="px-3 py-3 font-medium">من سجله</th>
                   </tr>
@@ -140,8 +140,8 @@ export function SummaryView() {
                       >
                         <td className="max-w-40 truncate px-3 py-3 font-medium">{expense.description}</td>
                         <td className="num whitespace-nowrap px-3 py-3 font-semibold">{formatMoney(expense.amount)}</td>
-                        <td dir="ltr" className="whitespace-nowrap px-3 py-3 text-left text-muted"><bdi dir="ltr" className="inline-block">{when.date}</bdi></td>
-                        <td dir="ltr" className="whitespace-nowrap px-3 py-3 text-left text-muted"><bdi dir="ltr" className="inline-block">{when.time}</bdi></td>
+                        <td dir="ltr" className="whitespace-nowrap px-3 py-3 text-center text-muted"><bdi dir="ltr" className="inline-block">{when.date}</bdi></td>
+                        <td dir="ltr" className="whitespace-nowrap px-3 py-3 text-center text-muted"><bdi dir="ltr" className="inline-block">{when.time}</bdi></td>
                         <td className="px-3 py-3 text-muted">{KIND_LABEL[expense.categoryKind]}</td>
                         <td className="px-3 py-3 text-muted">{expense.createdByName}</td>
                       </tr>

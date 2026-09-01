@@ -145,6 +145,30 @@ export function HomeRequestsView() {
     setExpenseDialogOpen(true);
   };
 
+  const toggleSelectAll = () => {
+    if (selectedIds.size === requests.length) {
+      setSelectedIds(new Set());
+      return;
+    }
+    setSelectionMode(true);
+    setSelectedIds(new Set(requests.map((request) => request.id)));
+  };
+
+  const deleteSelected = () => {
+    if (selectedRequests.length === 0) return;
+    if (!window.confirm(`حذف ${selectedRequests.length} طلب من قائمة المنزل؟`)) return;
+    selectedRequests.forEach((request) => mut.homeRequestRemove.mutate(request.id));
+    clearSelection();
+  };
+
+  const markSelectedBought = () => {
+    if (selectedRequests.length === 0) return;
+    selectedRequests
+      .filter((request) => !request.completed)
+      .forEach((request) => mut.homeRequestToggle.mutate({ id: request.id, completed: true }));
+    clearSelection();
+  };
+
   const addRequest = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const cleanTitle = title.trim();
@@ -208,12 +232,25 @@ export function HomeRequestsView() {
       </form>
 
       {selectionMode ? (
-        <div className="sticky top-16 z-20 flex items-center gap-2 rounded-lg bg-primary p-2 text-primary-fg shadow-nav">
-          <Button variant="secondary" size="sm" className="flex-1" disabled={selectedRequests.length === 0} onClick={openExpenseForm}>
+        <div className="sticky top-16 z-20 space-y-2 rounded-lg bg-primary p-2 text-primary-fg shadow-nav">
+          <div className="flex items-center gap-2">
+            <Button variant="secondary" size="sm" className="flex-1" onClick={toggleSelectAll}>
+              {selectedIds.size === requests.length ? "إلغاء تحديد الكل" : "تحديد الكل"}
+            </Button>
+            <Button variant="ghost" size="icon" className="text-primary-fg hover:bg-primary-fg/10" onClick={clearSelection} aria-label="إلغاء التحديد">
+              <X className="size-4" />
+            </Button>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <Button variant="outline" size="sm" className="border-primary-fg/40 text-primary-fg hover:bg-primary-fg/10" disabled={selectedRequests.length === 0} onClick={deleteSelected}>
+              حذف ({selectedRequests.length})
+            </Button>
+            <Button variant="outline" size="sm" className="border-primary-fg/40 text-primary-fg hover:bg-primary-fg/10" disabled={selectedRequests.length === 0} onClick={markSelectedBought}>
+              تم شراؤه
+            </Button>
+          </div>
+          <Button variant="secondary" className="w-full" disabled={selectedRequests.length === 0} onClick={openExpenseForm}>
             تسجيل كمصروف ({selectedRequests.length})
-          </Button>
-          <Button variant="ghost" size="icon" className="text-primary-fg hover:bg-primary-fg/10" onClick={clearSelection} aria-label="إلغاء التحديد">
-            <X className="size-4" />
           </Button>
         </div>
       ) : null}
