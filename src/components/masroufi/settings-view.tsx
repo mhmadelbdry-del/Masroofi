@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useJoinRequestDetail, useMasroufiMutations, useSnapshot } from "@/lib/masroufi/hooks";
-import { MemberDot } from "./member-dot";
 import { cn } from "@/lib/utils";
 import { useTheme, type MasroofiTheme } from "./theme";
 
@@ -33,21 +32,13 @@ function NoHouseholdSettings({ userLabel }: { userLabel: string }) {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold">إعداد الأسرة</h1>
-        <Link
-          to="/join"
-          className="flex min-h-10 items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm font-semibold text-primary-fg"
-        >
-          <UserPlus className="size-4" />
-          انضمام
-        </Link>
-      </div>
+      <h1 className="text-xl font-semibold">إعدادات التطبيق</h1>
+      <ThemePicker defaultTheme="teal" />
 
       <section className="paper-card rounded-lg border-2 border-primary/30 p-4">
-        <h2 className="mb-2 font-semibold">لم تنضم إلى أسرة بعد</h2>
+        <h2 className="mb-2 font-semibold">إعداد الأسرة</h2>
         <p className="mb-4 text-sm leading-6 text-muted">
-          إذا كان شريكك أنشأ البيت، استخدم كود المزامنة للانضمام إلى نفس الدفتر.
+          انضم إلى أسرة موجودة باستخدام كود الشريك أو أنشئ أسرة جديدة.
         </p>
         <div className="flex flex-col gap-2">
           <Link
@@ -81,8 +72,6 @@ function NoHouseholdSettings({ userLabel }: { userLabel: string }) {
           {signingOut ? "جارٍ الخروج…" : "تسجيل الخروج"}
         </Button>
       </section>
-
-      <ThemePicker defaultTheme="teal" />
     </div>
   );
 }
@@ -225,7 +214,7 @@ function ThemePicker({ defaultTheme }: { defaultTheme: MasroofiTheme }) {
         </div>
       </div>
       <div className="mt-3 grid grid-cols-2 gap-2">
-        <ThemeButton active={theme === "teal"} onClick={() => setTheme("teal")} label="الأخضر الحالي" swatch="bg-primary" />
+        <ThemeButton active={theme === "teal"} onClick={() => setTheme("teal")} label="الأخضر" swatch="bg-primary" />
         <ThemeButton active={theme === "pink"} onClick={() => setTheme("pink")} label="وردي" swatch="bg-[#b84f79]" />
       </div>
     </section>
@@ -255,52 +244,14 @@ function HouseholdSettings({ householdData: data, userLabel }: { householdData: 
 
   return (
     <div className="space-y-5">
-      <h1 className="text-xl font-semibold">إعداد الأسرة</h1>
+      <h1 className="text-xl font-semibold">إعدادات التطبيق</h1>
+
+      <ThemePicker defaultTheme={data.me.memberId === data.members[0]?.id ? "teal" : "pink"} />
 
       <section className="paper-card rounded-lg p-4">
-        <h2 className="mb-3 font-semibold">المستخدم الحالي على هذا الجهاز</h2>
+        <h2 className="mb-1 font-semibold">إعداد الأسرة</h2>
         <p className="mb-3 text-sm text-muted">
-          كل قيد جديد يُسجَّل باسم المستخدم المحدد لهذا الجهاز، مع التاريخ والوقت تلقائيًا.
-        </p>
-        <div className="grid grid-cols-2 gap-2">
-          {data.members.map((m) => {
-            const active = m.id === data.me.memberId;
-            return (
-              <button
-                key={m.id}
-                type="button"
-                onClick={() => mut.member.mutate(m.id)}
-                className={cn(
-                  "flex items-center gap-2 rounded-md px-3 py-3 text-right",
-                  active ? "bg-primary text-primary-fg" : "bg-bg-warm text-fg",
-                )}
-              >
-                <MemberDot name={m.name} size="sm" active={active} />
-                <span className="text-sm font-medium">{m.name}</span>
-              </button>
-            );
-          })}
-        </div>
-      </section>
-
-      {data.isOwner && data.joinRequests.length > 0 ? (
-        <section className="paper-card rounded-lg border-2 border-primary/30 p-4">
-          <h2 className="mb-1 font-semibold">طلبات الانضمام</h2>
-          <p className="mb-3 text-sm leading-6 text-muted">
-            راجع بيانات الشريك قبل الموافقة. لن يتم ربط الحساب بالبيت قبل اختيار طريقة التعامل مع بياناته القديمة.
-          </p>
-          <div className="space-y-3">
-            {data.joinRequests.map((request) => (
-              <JoinRequestCard key={request.id} request={request} />
-            ))}
-          </div>
-        </section>
-      ) : null}
-
-      <section className="paper-card rounded-lg p-4">
-        <h2 className="mb-1 font-semibold">رمز مزامنة البيت</h2>
-        <p className="mb-3 text-sm text-muted">
-          شارك هذا الرمز مع شريكك. بعد تسجيل الدخول يمكنه إدخاله للانضمام إلى نفس الدفتر.
+          رمز المزامنة والانضمام إلى أسرة جديدة وإدارة مغادرة الأسرة كلها من هذا القسم.
         </p>
         <div className="flex items-center gap-2">
           <div className="num flex-1 rounded-md bg-bg-warm px-3 py-3 text-center text-lg font-semibold tracking-widest">
@@ -317,14 +268,46 @@ function HouseholdSettings({ householdData: data, userLabel }: { householdData: 
                 toast.error("تعذر النسخ");
               }
             }}
-            aria-label="نسخ الرمز"
+            aria-label="نسخ رمز المزامنة"
           >
             <Copy className="size-4" />
           </Button>
         </div>
+        <p className="mt-2 text-xs text-muted">شارك هذا الرمز مع شريكك لمزامنة نفس الدفتر.</p>
+        <div className="mt-4 grid gap-2 sm:grid-cols-2">
+          <Link
+            to="/join"
+            className="flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 py-3 text-center text-sm font-semibold text-primary-fg"
+          >
+            <UserPlus className="size-4" />
+            الانضمام إلى أسرة جديدة
+          </Link>
+          <Button
+            variant="outline"
+            className="min-h-11 border-danger/40 text-danger hover:bg-danger/10"
+            disabled={mut.leave.isPending}
+            onClick={() => {
+              const confirmed = window.confirm("هل تريد مغادرة الأسرة؟ ستحتاج إلى كود جديد للانضمام إلى أسرة أخرى.");
+              if (confirmed) mut.leave.mutate();
+            }}
+          >
+            {mut.leave.isPending ? "جارٍ المغادرة…" : "مغادرة الأسرة"}
+          </Button>
+        </div>
+        {data.isOwner && data.joinRequests.length > 0 ? (
+          <div className="mt-5 border-t border-border/70 pt-4">
+            <h3 className="mb-1 font-semibold">طلبات الانضمام</h3>
+            <p className="mb-3 text-sm leading-6 text-muted">
+              راجع بيانات الشريك قبل الموافقة قبل ربطه بالأسرة.
+            </p>
+            <div className="space-y-3">
+              {data.joinRequests.map((request) => (
+                <JoinRequestCard key={request.id} request={request} />
+              ))}
+            </div>
+          </div>
+        ) : null}
       </section>
-
-      <ThemePicker defaultTheme={data.me.memberId === data.members[0]?.id ? "teal" : "pink"} />
 
       <form
         className="paper-card space-y-3 rounded-lg p-4"
@@ -360,24 +343,6 @@ function HouseholdSettings({ householdData: data, userLabel }: { householdData: 
           حفظ الإعدادات
         </Button>
       </form>
-
-      <section className="paper-card rounded-lg border border-danger/30 p-4">
-        <h2 className="font-semibold">إدارة الأسرة</h2>
-        <p className="mt-1 text-sm leading-6 text-muted">
-          يمكنك مغادرة هذا البيت للانضمام إلى بيت آخر. لن تُحذف بيانات البيت عند مغادرتك.
-        </p>
-        <Button
-          variant="outline"
-          className="mt-3 w-full border-danger/40 text-danger hover:bg-danger/10"
-          disabled={mut.leave.isPending}
-          onClick={() => {
-            const confirmed = window.confirm("هل تريد مغادرة الأسرة؟ ستحتاج إلى كود جديد للانضمام إلى أسرة أخرى.");
-            if (confirmed) mut.leave.mutate();
-          }}
-        >
-          {mut.leave.isPending ? "جارٍ المغادرة…" : "مغادرة الأسرة"}
-        </Button>
-      </section>
 
       <section className="paper-card rounded-lg p-4">
         <p className="text-sm text-muted">الحساب: {userLabel}</p>
