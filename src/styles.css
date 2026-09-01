@@ -102,3 +102,35 @@
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
 }
+
+/* Optional spouse theme: the default teal palette remains unchanged. */
+.theme-pink {
+  --color-bg: #f8eef2;
+  --color-bg-warm: #f3dfe8;
+  --color-surface: #fffafd;
+  --color-surface-2: #fff3f7;
+  --color-fg: #3a2730;
+  --color-muted: #765d68;
+  --color-subtle: #a78996;
+  --color-primary: #b84f79;
+  --color-primary-fg: #fff7fa;
+  --color-primary-soft: #f4d4e1;
+  --color-hero: #71304f;
+  --color-hero-fg: #fff8fb;
+  --color-hero-muted: #e9b9ca;
+  --color-border: #ead1dc;
+  --color-border-strong: #d9b4c4;
+  --color-danger: #a33b4d;
+  --color-danger-soft: #f9e1e6;
+  --color-warn: #9a5b12;
+  --color-warn-soft: #f6ead4;
+  --color-ok: #b84f79;
+  --color-ok-soft: #f4d4e1;
+  --color-ring: #b84f79;
+}
+
+.theme-pink .hero-panel {
+  background-image:
+    radial-gradient(ellipse at 0% 0%, rgb(255 255 255 / 0.12), transparent 52%),
+    linear-gradient(165deg, rgb(255 255 255 / 0.05), transparent 46%);
+}

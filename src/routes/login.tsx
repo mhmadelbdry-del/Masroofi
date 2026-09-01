@@ -1,4 +1,4 @@
-import { createFileRoute, Navigate } from "@tanstack/react-router";
+import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { authClient, authEnabled } from "@/lib/auth/client";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
@@ -82,7 +82,14 @@ function Login() {
                 <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} dir="ltr" />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="password">كلمة المرور</Label>
+                <div className="flex items-center justify-between gap-2">
+                  <Label htmlFor="password">كلمة المرور</Label>
+                  {mode === "in" ? (
+                    <Link to="/forgot-password" className="text-xs font-medium text-primary hover:underline">
+                      نسيت كلمة المرور؟
+                    </Link>
+                  ) : null}
+                </div>
                 <Input id="password" type="password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} dir="ltr" />
               </div>
               {error ? <p className="text-sm text-danger">{error}</p> : null}

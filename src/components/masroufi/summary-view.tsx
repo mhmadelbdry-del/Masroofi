@@ -12,7 +12,6 @@ import {
 } from "@/lib/masroufi/format";
 import { useMasroufiMutations, useSnapshot } from "@/lib/masroufi/hooks";
 import { useMonth } from "@/lib/masroufi/month-store";
-import { CategoryBar } from "./category-bar";
 import { ExpenseForm } from "./expense-form";
 import { ExpenseRow } from "./expense-row";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -28,9 +27,9 @@ export function SummaryView() {
   if (!data?.household || !data.me) return null;
 
   const spent = data.expenses.reduce((s, e) => s + e.amount, 0);
-  const remaining = data.household.monthlyIncome - spent;
+  const remaining = data.household.monthlyIncome - spent - data.household.savingsGoal;
   const left = daysLeftInMonth(year, month);
-  const goalMet = remaining >= data.household.savingsGoal && data.household.savingsGoal > 0;
+  const goalMet = remaining >= 0 && data.household.savingsGoal > 0;
   const reflection = note ?? data.reflection;
 
   return (
@@ -64,7 +63,7 @@ export function SummaryView() {
       </div>
 
       <section className="hero-panel rounded-xl p-5">
-        <p className="text-sm text-hero-muted">المتبقي للإنفاق حتى نهاية الشهر</p>
+        <p className="text-sm text-hero-muted">المتبقي للإنفاق لتحقيق هدف الادخار</p>
         <p className="num mt-1 text-4xl font-semibold tracking-tight">
           {formatMoney(remaining)}
         </p>
@@ -77,7 +76,7 @@ export function SummaryView() {
           <HeroStat
             label="هدف الادخار"
             value={formatMoney(data.household.savingsGoal)}
-            hint={goalMet ? "تحقق" : undefined}
+            hint={goalMet ? "الهدف محفوظ" : "يحتاج مراجعة"}
           />
         </div>
       </section>
@@ -97,14 +96,30 @@ export function SummaryView() {
 
       <section className="space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="font-semibold">متابعة فئات الميزانية</h2>
-          <Link to="/budget" className="text-sm text-primary">
-            إدارة الحدود
+          <h2 className="font-semibold">آخر 5 مصروفات</h2>
+          <Link to="/expenses" className="text-sm text-primary">
+            كل المصروفات
           </Link>
         </div>
-        {data.categories.map((c) => (
-          <CategoryBar key={c.id} category={c} />
-        ))}
+        {data.expenses.length === 0 ? (
+          <p className="paper-card rounded-lg p-6 text-center text-sm text-muted">
+            لا مصروفات في هذا الشهر بعد.
+          </p>
+        ) : (
+          data.expenses.slice(0, 5).map((e) => (
+            <ExpenseRow
+              key={e.id}
+              expense={e}
+              onClick={() => setEditing(e)}
+              onMovePrevious={() => mut.move.mutate({ id: e.id, direction: "previous" })}
+              onMoveNext={() => mut.move.mutate({ id: e.id, direction: "next" })}
+              onDelete={() => {
+                if (window.confirm(`حذف مصروف «${e.description}»؟`)) mut.remove.mutate(e.id);
+              }}
+              busy={mut.move.isPending || mut.remove.isPending}
+            />
+          ))
+        )}
       </section>
 
       <section className="paper-card rounded-lg p-4">
@@ -125,34 +140,6 @@ export function SummaryView() {
         >
           حفظ التأمل الشهري
         </Button>
-      </section>
-
-      <section className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="font-semibold">آخر العمليات المقيدة</h2>
-          <Link to="/expenses" className="text-sm text-primary">
-            كل المصروفات
-          </Link>
-        </div>
-        {data.expenses.length === 0 ? (
-          <p className="paper-card rounded-lg p-6 text-center text-sm text-muted">
-            لا مصروفات في هذا الشهر بعد.
-          </p>
-        ) : (
-          data.expenses.slice(0, 6).map((e) => (
-            <ExpenseRow
-              key={e.id}
-              expense={e}
-              onClick={() => setEditing(e)}
-              onMovePrevious={() => mut.move.mutate({ id: e.id, direction: "previous" })}
-              onMoveNext={() => mut.move.mutate({ id: e.id, direction: "next" })}
-              onDelete={() => {
-                if (window.confirm(`حذف مصروف «${e.description}»؟`)) mut.remove.mutate(e.id);
-              }}
-              busy={mut.move.isPending || mut.remove.isPending}
-            />
-          ))
-        )}
       </section>
 
       <Dialog open={Boolean(editing)} onOpenChange={(o) => !o && setEditing(null)}>

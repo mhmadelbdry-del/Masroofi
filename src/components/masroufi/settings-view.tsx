@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Check, Copy, Eye, LogOut, UserPlus, X } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Check, Copy, Eye, LogOut, Palette, UserPlus, X } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { signOut } from "@/lib/auth/client";
@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { useJoinRequestDetail, useMasroufiMutations, useSnapshot } from "@/lib/masroufi/hooks";
 import { MemberDot } from "./member-dot";
 import { cn } from "@/lib/utils";
+import { useTheme, type MasroofiTheme } from "./theme";
 
 export function SettingsView() {
   const user = useCurrentUser();
@@ -80,6 +81,8 @@ function NoHouseholdSettings({ userLabel }: { userLabel: string }) {
           {signingOut ? "جارٍ الخروج…" : "تسجيل الخروج"}
         </Button>
       </section>
+
+      <ThemePicker defaultTheme="teal" />
     </div>
   );
 }
@@ -201,6 +204,48 @@ function JoinComparison({ detail }: { detail: NonNullable<ReturnType<typeof useJ
   );
 }
 
+function ThemePicker({ defaultTheme }: { defaultTheme: MasroofiTheme }) {
+  const { theme, setTheme } = useTheme();
+
+  useEffect(() => {
+    try {
+      if (!window.localStorage.getItem("masroofi-theme")) setTheme(defaultTheme);
+    } catch {
+      setTheme(defaultTheme);
+    }
+  }, [defaultTheme, setTheme]);
+
+  return (
+    <section className="paper-card rounded-lg p-4">
+      <div className="flex items-center gap-2">
+        <Palette className="size-5 text-primary" />
+        <div>
+          <h2 className="font-semibold">لون الثيمة</h2>
+          <p className="mt-1 text-sm text-muted">اختر اللون الذي يناسبك على هذا الجهاز.</p>
+        </div>
+      </div>
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        <ThemeButton active={theme === "teal"} onClick={() => setTheme("teal")} label="الأخضر الحالي" swatch="bg-primary" />
+        <ThemeButton active={theme === "pink"} onClick={() => setTheme("pink")} label="وردي" swatch="bg-[#b84f79]" />
+      </div>
+    </section>
+  );
+}
+
+function ThemeButton({ active, onClick, label, swatch }: { active: boolean; onClick: () => void; label: string; swatch: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn("flex items-center justify-center gap-2 rounded-md border px-3 py-3 text-sm font-medium", active ? "border-primary bg-primary-soft" : "border-border bg-bg-warm")}
+      aria-pressed={active}
+    >
+      <span className={cn("size-4 rounded-full", swatch)} />
+      {label}
+    </button>
+  );
+}
+
 function HouseholdSettings({ householdData: data, userLabel }: { householdData: HouseholdData; userLabel: string }) {
   const mut = useMasroufiMutations();
   const [signingOut, setSigningOut] = useState(false);
@@ -278,6 +323,8 @@ function HouseholdSettings({ householdData: data, userLabel }: { householdData: 
           </Button>
         </div>
       </section>
+
+      <ThemePicker defaultTheme={data.me.memberId === data.members[0]?.id ? "teal" : "pink"} />
 
       <form
         className="paper-card space-y-3 rounded-lg p-4"

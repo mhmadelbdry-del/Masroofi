@@ -6,6 +6,7 @@ import { useSnapshot } from "@/lib/masroufi/hooks";
 import { initializePushNotifications } from "@/lib/masroufi/push-client";
 import { Logo } from "./logo";
 import { MemberDot } from "./member-dot";
+import { useTheme } from "./theme";
 
 const TABS = [
   { to: "/", label: "ملخص الشهر", icon: LayoutGrid },
@@ -18,6 +19,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { data } = useSnapshot();
   const me = data?.me;
+  const { setTheme } = useTheme();
+
+  useEffect(() => {
+    if (!me || !data?.members.length) return;
+    try {
+      if (!window.localStorage.getItem("masroofi-theme")) {
+        setTheme(me.memberId === data.members[0]?.id ? "teal" : "pink");
+      }
+    } catch {
+      setTheme(me.memberId === data.members[0]?.id ? "teal" : "pink");
+    }
+  }, [data?.members, me, setTheme]);
 
   useEffect(() => {
     void initializePushNotifications();
