@@ -242,10 +242,10 @@ export function HomeRequestsView() {
             </Button>
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <Button variant="outline" size="sm" className="border-primary-fg/40 text-primary-fg hover:bg-primary-fg/10" disabled={selectedRequests.length === 0} onClick={deleteSelected}>
+            <Button variant="outline" size="sm" className="border-primary-fg/40 bg-surface text-fg hover:bg-surface-2" disabled={selectedRequests.length === 0} onClick={deleteSelected}>
               حذف ({selectedRequests.length})
             </Button>
-            <Button variant="outline" size="sm" className="border-primary-fg/40 text-primary-fg hover:bg-primary-fg/10" disabled={selectedRequests.length === 0} onClick={markSelectedBought}>
+            <Button variant="outline" size="sm" className="border-primary-fg/40 bg-surface text-fg hover:bg-surface-2" disabled={selectedRequests.length === 0} onClick={markSelectedBought}>
               تم شراؤه
             </Button>
           </div>

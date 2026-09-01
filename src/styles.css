@@ -105,28 +105,28 @@
 
 /* Optional spouse theme: the default teal palette remains unchanged. */
 .theme-pink {
-  --color-bg: #f8eef2;
-  --color-bg-warm: #f3dfe8;
-  --color-surface: #fffafd;
-  --color-surface-2: #fff3f7;
-  --color-fg: #3a2730;
-  --color-muted: #765d68;
-  --color-subtle: #a78996;
-  --color-primary: #b84f79;
-  --color-primary-fg: #fff7fa;
-  --color-primary-soft: #f4d4e1;
-  --color-hero: #71304f;
-  --color-hero-fg: #fff8fb;
-  --color-hero-muted: #e9b9ca;
-  --color-border: #ead1dc;
-  --color-border-strong: #d9b4c4;
-  --color-danger: #a33b4d;
-  --color-danger-soft: #f9e1e6;
-  --color-warn: #9a5b12;
-  --color-warn-soft: #f6ead4;
-  --color-ok: #b84f79;
-  --color-ok-soft: #f4d4e1;
-  --color-ring: #b84f79;
+  --color-bg: #fdf5f8;
+  --color-bg-warm: #faeaf0;
+  --color-surface: #fffdfd;
+  --color-surface-2: #fff7fa;
+  --color-fg: #452f38;
+  --color-muted: #806875;
+  --color-subtle: #ad929e;
+  --color-primary: #d4779a;
+  --color-primary-fg: #fffafd;
+  --color-primary-soft: #f8dfe9;
+  --color-hero: #a65376;
+  --color-hero-fg: #fffafd;
+  --color-hero-muted: #f4cfdd;
+  --color-border: #f0d8e2;
+  --color-border-strong: #e2bdcd;
+  --color-danger: #b84f60;
+  --color-danger-soft: #fbe5e9;
+  --color-warn: #a66c25;
+  --color-warn-soft: #fbefd9;
+  --color-ok: #c6668b;
+  --color-ok-soft: #f8dfe9;
+  --color-ring: #d4779a;
 }
 
 .theme-pink .hero-panel {

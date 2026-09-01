@@ -214,11 +214,11 @@ export function SummaryView() {
 
 function HeroStat({ label, value, hint, tone = "normal" }: { label: string; value: string; hint?: string; tone?: "normal" | "danger" }) {
   return (
-    <div className={`rounded-md px-2.5 py-2 ${tone === "danger" ? "bg-danger/35 ring-1 ring-danger-soft/70" : "bg-surface/10"}`}>
+    <div className={`rounded-md px-2.5 py-2 ${tone === "danger" ? "bg-[#b42318]/85 text-white ring-1 ring-[#fecaca]" : "bg-surface/10"}`}>
       <p className="text-xs text-hero-muted">{label}</p>
       <p className="num mt-0.5 text-sm font-semibold">{value}</p>
       {hint ? (
-        <Badge tone="hero" className="mt-1">
+        <Badge tone={tone === "danger" ? "over" : "hero"} className="mt-1">
           {hint}
         </Badge>
       ) : null}
