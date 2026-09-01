@@ -248,7 +248,7 @@ export function HomeRequestsView() {
               categories={data.categories}
               me={data.me}
               pending={mut.add.isPending}
-              initial={{ description: selectedRequests.map((request) => `${request.title} (${request.quantity})`).join("، ") }}
+              initial={{ description: selectedRequests.map((request) => `${request.quantity} ${request.title}`).join("، ") }}
               submitLabel="حفظ المصروف"
               onSubmit={(payload) => {
                 mut.add.mutate(

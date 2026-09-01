@@ -78,7 +78,8 @@ export function SummaryView() {
           <HeroStat
             label="هدف الادخار"
             value={formatMoney(data.household.savingsGoal)}
-            hint={goalMet ? "الهدف محفوظ" : "يحتاج مراجعة"}
+            hint={goalMet ? "الهدف مُتحقِق" : "غير متحقق"}
+            tone={goalMet ? "normal" : "danger"}
           />
         </div>
       </section>
@@ -120,10 +121,11 @@ export function SummaryView() {
                 <thead className="bg-bg-warm text-muted">
                   <tr>
                     <th className="px-3 py-3 font-medium">المصروف</th>
-                    <th className="px-3 py-3 font-medium">الفئة الرئيسية</th>
-                    <th className="px-3 py-3 font-medium">التاريخ والوقت</th>
-                    <th className="px-3 py-3 font-medium">من سجله</th>
                     <th className="px-3 py-3 font-medium">قيمته</th>
+                    <th className="px-3 py-3 font-medium">تاريخه</th>
+                    <th className="px-3 py-3 font-medium">وقته</th>
+                    <th className="px-3 py-3 font-medium">فئته</th>
+                    <th className="px-3 py-3 font-medium">من سجله</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -137,10 +139,11 @@ export function SummaryView() {
                         title="اضغط لعرض تفاصيل المصروف"
                       >
                         <td className="max-w-40 truncate px-3 py-3 font-medium">{expense.description}</td>
-                        <td className="px-3 py-3 text-muted">{KIND_LABEL[expense.categoryKind]}</td>
-                        <td className="whitespace-nowrap px-3 py-3 text-muted"><span dir="ltr">{when.date} — {when.time}</span></td>
-                        <td className="px-3 py-3 text-muted">{expense.createdByName}</td>
                         <td className="num whitespace-nowrap px-3 py-3 font-semibold">{formatMoney(expense.amount)}</td>
+                        <td className="whitespace-nowrap px-3 py-3 text-muted"><span dir="ltr">{when.date}</span></td>
+                        <td className="whitespace-nowrap px-3 py-3 text-muted"><span dir="ltr">{when.time}</span></td>
+                        <td className="px-3 py-3 text-muted">{KIND_LABEL[expense.categoryKind]}</td>
+                        <td className="px-3 py-3 text-muted">{expense.createdByName}</td>
                       </tr>
                     );
                   })}
@@ -209,9 +212,9 @@ export function SummaryView() {
   );
 }
 
-function HeroStat({ label, value, hint }: { label: string; value: string; hint?: string }) {
+function HeroStat({ label, value, hint, tone = "normal" }: { label: string; value: string; hint?: string; tone?: "normal" | "danger" }) {
   return (
-    <div className="rounded-md bg-surface/10 px-2.5 py-2">
+    <div className={`rounded-md px-2.5 py-2 ${tone === "danger" ? "bg-danger/35 ring-1 ring-danger-soft/70" : "bg-surface/10"}`}>
       <p className="text-xs text-hero-muted">{label}</p>
       <p className="num mt-0.5 text-sm font-semibold">{value}</p>
       {hint ? (
