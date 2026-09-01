@@ -140,8 +140,8 @@ export function SummaryView() {
                       >
                         <td className="max-w-40 truncate px-3 py-3 font-medium">{expense.description}</td>
                         <td className="num whitespace-nowrap px-3 py-3 font-semibold">{formatMoney(expense.amount)}</td>
-                        <td className="whitespace-nowrap px-3 py-3 text-muted"><span dir="ltr">{when.date}</span></td>
-                        <td className="whitespace-nowrap px-3 py-3 text-muted"><span dir="ltr">{when.time}</span></td>
+                        <td dir="ltr" className="whitespace-nowrap px-3 py-3 text-left text-muted"><bdi dir="ltr" className="inline-block">{when.date}</bdi></td>
+                        <td dir="ltr" className="whitespace-nowrap px-3 py-3 text-left text-muted"><bdi dir="ltr" className="inline-block">{when.time}</bdi></td>
                         <td className="px-3 py-3 text-muted">{KIND_LABEL[expense.categoryKind]}</td>
                         <td className="px-3 py-3 text-muted">{expense.createdByName}</td>
                       </tr>

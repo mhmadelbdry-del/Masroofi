@@ -75,12 +75,11 @@ export function formatMonthTitle(year: number, month: number): string {
 
 export function formatExpenseWhen(iso: string): { date: string; time: string } {
   const d = new Date(iso);
-  const date = new Intl.DateTimeFormat("ar-EG", {
-    day: "2-digit",
-    month: "2-digit",
-    numberingSystem: "latn",
-    timeZone: CAIRO,
-  }).format(d);
+    const date = new Intl.DateTimeFormat("en-GB", {
+      day: "2-digit",
+      month: "2-digit",
+      timeZone: CAIRO,
+    }).format(d);
   const time = new Intl.DateTimeFormat("ar-EG", {
     hour: "2-digit",
     minute: "2-digit",
