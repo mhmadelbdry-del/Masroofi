@@ -5,7 +5,7 @@ import { PreviewHostBridge } from "@/components/preview-host-bridge";
 import { AppProviders } from "@/components/masroufi/providers";
 import appCss from "../styles.css?url";
 
-const APP_NAME = "مصروفي";
+const APP_NAME = "رقيب";
 
 const fetchSessionUser = createServerFn({ method: "GET" }).handler(async () => {
   const { getSessionUser } = await import("@/lib/auth/verify.server");
@@ -24,10 +24,10 @@ export const Route = createRootRoute({
       { name: "description", content: "دفتر مصروفات البيت — محمد وإسراء، متزامن على الجوالين." },
     ],
     links: [
-      { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
+      { rel: "icon", type: "image/png", href: "/raqeeb-icon.png" },
       { rel: "stylesheet", href: appCss },
       { rel: "manifest", href: "/__grok/manifest.webmanifest" },
-      { rel: "apple-touch-icon", href: "/__grok/icon-180.png" },
+      { rel: "apple-touch-icon", href: "/raqeeb-icon.png" },
     ],
   }),
   component: RootDocument,
