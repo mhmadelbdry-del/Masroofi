@@ -1,4 +1,4 @@
-import { Wallet } from "lucide-react";
+﻿import { Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function Logo({
@@ -25,9 +25,11 @@ export function Logo({
       </span>
       {withWord ? (
         <span className={cn("text-lg font-semibold tracking-tight", invert ? "text-hero-fg" : "text-fg")}>
-          مصروفي
+          رقيب
         </span>
       ) : null}
     </span>
   );
 }
+
+

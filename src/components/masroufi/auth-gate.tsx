@@ -1,4 +1,4 @@
-import { RedirectToSignIn } from "@/lib/auth/gates";
+﻿import { RedirectToSignIn } from "@/lib/auth/gates";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { isUnauthorized } from "@/lib/utils";
 import { useSnapshot } from "@/lib/masroufi/hooks";
@@ -8,8 +8,10 @@ import { Logo } from "./logo";
 
 export function Splash({ label = "جاري التحميل…" }: { label?: string }) {
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-bg px-6">
+    <div className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-bg px-6 text-center">
       <Logo size="lg" withWord />
+      <p className="mt-2 text-2xl font-semibold" style={{ fontFamily: "Aref Ruqaa, serif" }}>﴿ وَكَفَىٰ بِٱللَّهِ حَسِیبࣰا ﴾</p>
+      <p className="text-base font-medium" style={{ fontFamily: "Aref Ruqaa, serif" }}>التطبيق بواسطة م محمد البدري</p>
       <p className="text-sm text-muted">{label}</p>
     </div>
   );
@@ -37,3 +39,8 @@ export function HouseholdGate({ children }: { children: ReactNode }) {
   if (!data?.household) return <Navigate to="/onboarding" />;
   return <>{children}</>;
 }
+
+
+
+
+

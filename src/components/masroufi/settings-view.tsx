@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { Check, Copy, Eye, LogOut, Palette, UserPlus, X } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
@@ -214,7 +214,7 @@ function ThemePicker({ defaultTheme }: { defaultTheme: MasroofiTheme }) {
         </div>
       </div>
       <div className="mt-3 grid grid-cols-2 gap-2">
-        <ThemeButton active={theme === "teal"} onClick={() => setTheme("teal")} label="الأخضر" swatch="bg-primary" />
+        <ThemeButton active={theme === "teal"} onClick={() => setTheme("teal")} label="أخضر" swatch="bg-[#0f766e]" />
         <ThemeButton active={theme === "pink"} onClick={() => setTheme("pink")} label="وردي" swatch="bg-[#b84f79]" />
       </div>
     </section>
@@ -362,3 +362,9 @@ function HouseholdSettings({ householdData: data, userLabel }: { householdData: 
     </div>
   );
 }
+
+
+
+
+
+
