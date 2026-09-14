@@ -3,7 +3,7 @@ import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useMasroufiMutations, useSnapshot } from "@/lib/masroufi/hooks";
-import { formatMonthTitle } from "@/lib/masroufi/format";
+import { formatMoney, formatMonthTitle } from "@/lib/masroufi/format";
 import { useMonth } from "@/lib/masroufi/month-store";
 import type { Expense } from "@/lib/masroufi/types";
 import { ExpenseForm } from "./expense-form";
@@ -22,6 +22,8 @@ export function ExpensesView() {
     if (filter === "all") return data.expenses;
     return data.expenses.filter((e) => e.categoryId === filter);
   }, [data, filter]);
+
+  const filteredTotal = useMemo(() => list.reduce((sum, expense) => sum + expense.amount, 0), [list]);
 
   if (!data?.household || !data.me) return null;
 
@@ -50,20 +52,24 @@ export function ExpensesView() {
 
       <section className="space-y-3">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="font-semibold">سجل العمليات الأخير</h2>
-          <select
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            className="h-9 rounded-md border border-border bg-surface px-2 text-xs text-fg"
-          >
-            <option value="all">كل الفئات</option>
-            {data.categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
+          <h2 className="font-semibold">سجل العمليات</h2>
+          <div className="text-left">
+            <p className="text-xs text-muted">إجمالي الفئة المختارة</p>
+            <p className="num text-sm font-semibold text-primary">{formatMoney(filteredTotal)}</p>
+          </div>
         </div>
+        <select
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          className="h-9 w-full rounded-md border border-border bg-surface px-2 text-xs text-fg"
+        >
+          <option value="all">كل الفئات</option>
+          {data.categories.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
         {list.length === 0 ? (
           <p className="paper-card rounded-lg p-8 text-center text-sm text-muted">
             لا توجد عمليات في هذا العرض.
