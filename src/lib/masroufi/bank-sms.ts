@@ -3,6 +3,11 @@ import { importBankExpense } from "./queries";
 
 export interface BankSmsStatus {
   enabled?: boolean;
+  captureModes?: string[];
+  captureMode?: "sms" | "notifications";
+  notificationAccess?: boolean;
+  packages?: string[];
+  notificationApps?: {packageName:string;label:string}[];
   ownerKey?: string;
   categoryId?: string;
   senders?: string[];
@@ -20,10 +25,10 @@ export interface BankSmsEntry {
   preview?: string;
 }
 interface BankSmsApi {
-  requestAccess(): Promise<{ granted: boolean }>;
+  requestAccess(options?: {captureMode?: "sms" | "notifications"}): Promise<{ granted: boolean }>;
   requestNotifications(): Promise<void>;
   getStatus(): Promise<BankSmsStatus>;
-  configure(options: { senders: string[]; categoryId: string; ownerKey: string }): Promise<void>;
+  configure(options: { packages?: string[]; captureMode?: "sms" | "notifications"; senders: string[]; categoryId: string; ownerKey: string }): Promise<void>;
   getPending(options: { ownerKey: string }): Promise<{ entries: BankSmsEntry[] }>;
   acknowledge(options: { ownerKey: string; id: string }): Promise<void>;
   disable(): Promise<void>;

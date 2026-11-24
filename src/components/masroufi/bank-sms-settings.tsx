@@ -25,6 +25,8 @@ export function BankSmsSettings({
   const [supported, setSupported] = useState(false);
   const [reviews, setReviews] = useState<BankSmsEntry[]>([]);
   const [status, setStatus] = useState<BankSmsStatus>({});
+  const [captureMode, setCaptureMode] = useState<"sms" | "notifications">("sms");
+  const [packages, setPackages] = useState<string[]>([]);
   const [senders, setSenders] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [consent, setConsent] = useState(false);
@@ -33,10 +35,12 @@ export function BankSmsSettings({
   async function reload() {
     const next = await BankSms.getStatus();
     setStatus(next);
+    if(next.ownerKey===ownerKey)setCaptureMode(next.captureMode??"sms");
     setReviews([]);
     if (next.ownerKey === ownerKey) {
       const pending = await BankSms.getPending({ ownerKey });
       setReviews(pending.entries.filter((e) => e.review));
+      setPackages(next.packages??[]);
       setSenders(next.senders?.join(", ") ?? "");
       setCategoryId(next.categoryId ?? "");
     }
@@ -63,7 +67,7 @@ export function BankSmsSettings({
     <section className="paper-card space-y-3 rounded-lg p-4" aria-label="رسائل البنك أو المحفظة">
       <h2 className="font-semibold">تسجيل مصروفات البنك أو المحفظة تلقائياً</h2>
       <p className="text-sm leading-6 text-muted">
-        للرسائل الجديدة من المرسلين الذين تختارهم، بالجنيه المصري فقط. نتجاهل أكواد التحقق
+        للرسائل أو الإشعارات الجديدة من المصادر التي تختارها، بالجنيه المصري فقط. نتجاهل أكواد التحقق
         والإيداعات والتحويلات والسحب وشحن المحفظة. الرسائل التي تشير لمصروف ولا نفهم مبلغها تبقى
         للمراجعة محلياً. لا نقرأ سجل رسائلك القديم.
       </p>
@@ -74,7 +78,7 @@ export function BankSmsSettings({
       ) : (
         <>
           <p role="status" className="text-sm">
-            الحالة: {status.enabled ? (status.granted ? "مفعّل" : "إذن الرسائل غير متاح") : "متوقف"}{" "}
+            الحالة: {status.enabled ? (status.granted ? "مفعّل" : status.captureMode==="notifications" ? "إذن الإشعارات غير متاح" : "إذن الرسائل غير متاح") : "متوقف"}{" "}
             · عمليات تنتظر المزامنة: {status.pending ?? 0}
           </p>
           {status.storageWarning ? (
@@ -90,8 +94,18 @@ export function BankSmsSettings({
             </p>
           ) : (
             <>
+              {status.captureModes?.includes("notifications") ? <div className="space-y-2 rounded-md border border-border p-3">
+                <Label htmlFor="bank-capture-mode">طريقة التقاط الرسائل الجديدة</Label>
+                <select id="bank-capture-mode" className="h-11 w-full rounded-md border border-border bg-surface px-3" value={captureMode} onChange={e=>setCaptureMode(e.target.value as "sms"|"notifications")}>
+                  <option value="sms">استقبال SMS بالإذن المخصص</option><option value="notifications">إشعارات التطبيقات المحددة</option>
+                </select>
+                {captureMode==="notifications" ? <>
+                  <p className="text-sm leading-6">إذن أندرويد يمنح وصولاً واسعاً للإشعارات، لكن مصاريف يعالج فقط التطبيقات التي تحددها هنا للبحث عن مصروف مالي واضح. لا يحفظ نص الإشعار أو أكواد التحقق ولا يقرأ سجل الإشعارات القديم. المحتوى المخفي أو غير المدعوم قد لا يُقرأ. لا تتجاوز تحذير حماية أو حظر تثبيت؛ إذن الإشعارات لا يضمن قبول التطبيق.</p>
+                  <fieldset className="max-h-48 space-y-2 overflow-y-auto"><legend className="text-sm font-medium">اختر التطبيقات المسموح بها فقط</legend>{status.notificationApps?.map(app=><label key={app.packageName} className="flex items-start gap-2 text-sm"><input type="checkbox" checked={packages.includes(app.packageName)} onChange={e=>setPackages(e.target.checked?[...packages,app.packageName]:packages.filter(p=>p!==app.packageName))}/><span>{app.label}<span className="block break-all text-xs text-muted" dir="ltr">{app.packageName}</span></span></label>)}</fieldset>
+                </> : null}
+              </div> : null}
               <div className="space-y-1.5">
-                <Label htmlFor="bank-senders">اسم مرسل البنك أو المحفظة كما يظهر في الرسالة</Label>
+                <Label htmlFor="bank-senders">{captureMode==="notifications" ? "تصفية باسم المرسل أو عنوان الإشعار (اختياري)" : "اسم مرسل البنك أو المحفظة كما يظهر في الرسالة"}</Label>
                 <Input
                   id="bank-senders"
                   value={senders}
@@ -99,7 +113,7 @@ export function BankSmsSettings({
                   placeholder="اسم المرسل بالضبط، وافصل بين الأسماء بفاصلة"
                 />
                 <p className="text-xs text-muted">
-                  قائمة محددة، بدون نجمة أو مطابقة جزئية. اسم المرسل وحده ليس ضماناً لأصالة الرسالة.
+                  مطابقة تامة فقط، بدون نجمة. في وضع الإشعارات يمكنك تركه فارغاً لمعالجة المصروفات من التطبيقات المختارة فقط. اسم المرسل ليس ضماناً لأصالة المحتوى.
                 </p>
               </div>
               <div className="space-y-1.5">
@@ -126,14 +140,14 @@ export function BankSmsSettings({
                   className="mt-1 size-4"
                 />
                 <span>
-                  أوافق على معالجة الرسائل الجديدة محلياً وتسجيل العمليات المفهومة تلقائياً في الفئة
+                  أوافق على معالجة {captureMode==="notifications" ? "إشعارات التطبيقات المختارة الجديدة" : "الرسائل الجديدة"} محلياً وتسجيل العمليات المفهومة تلقائياً في الفئة
                   المختارة. عند فتح التطبيق تُرسل قيمة العملية وتاريخها والفئة ومعرّف منع التكرار
                   إلى دفتر الأسرة، فتظهر لأعضاء الأسرة. لا يُرسل نص الرسالة أو بيانات البطاقة.
                 </span>
               </label>
               <Button
                 className="w-full"
-                disabled={busy || !consent || !categoryId || !senders.trim()}
+                disabled={busy || !consent || !categoryId || (captureMode==="notifications" ? packages.length===0 : !senders.trim())}
                 onClick={() =>
                   void run(async () => {
                     const list = [
@@ -145,16 +159,16 @@ export function BankSmsSettings({
                       ),
                     ];
                     if (
-                      !list.length ||
+                      (captureMode!=="notifications" && !list.length) ||
                       list.length > 20 ||
                       list.some((s) => s.length > 40 || s.includes("*"))
                     )
                       throw new Error("أدخل أسماء مرسلين محددة وصحيحة");
-                    if (!(await BankSms.requestAccess()).granted)
+                    if (!(await BankSms.requestAccess({captureMode})).granted)
                       throw new Error(
-                        "لم يتم منح إذن استقبال الرسائل. يمكنك منحه من إعدادات أندرويد",
+                        captureMode==="notifications" ? "افتح إعدادات الوصول للإشعارات، ثم ارجع واضغط حفظ الإعدادات مرة أخرى إن وافقت. لا تتجاوز إعداداً محظوراً." : "لم يتم منح إذن استقبال الرسائل. يمكنك منحه من إعدادات أندرويد",
                       );
-                    await BankSms.configure({ ownerKey, senders: list, categoryId });
+                    await BankSms.configure({ ownerKey, senders: list, categoryId, ...(status.captureModes?.includes("notifications") ? {captureMode,packages} : {}) });
                     await BankSms.requestNotifications();
                     toast.success("تم تفعيل حفظ العمليات على الجهاز");
                   })
