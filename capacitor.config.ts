@@ -2,8 +2,8 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.masroofi.app',
-  appName: 'Masroofi',
-  webDir: '.vercel/output/static',
+  appName: 'مصاريف',
+  webDir: 'public/native',
   server: {
     url: 'https://masroofi-lac.vercel.app',
     cleartext: false,

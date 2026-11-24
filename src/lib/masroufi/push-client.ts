@@ -1,14 +1,16 @@
 import { Capacitor } from "@capacitor/core";
-import {
-  PushNotifications,
-  type Token,
-} from "@capacitor/push-notifications";
+import { PushNotifications, type Token } from "@capacitor/push-notifications";
 import { registerPushDevice } from "./queries";
 
 let initialized = false;
 
 export async function initializePushNotifications() {
-  if (initialized || !Capacitor.isNativePlatform()) return;
+  if (
+    initialized ||
+    !Capacitor.isNativePlatform() ||
+    !Capacitor.isPluginAvailable("PushNotifications")
+  )
+    return;
   initialized = true;
 
   await PushNotifications.addListener("registration", async (token: Token) => {
@@ -28,7 +30,8 @@ export async function initializePushNotifications() {
   });
 
   const permission = await PushNotifications.checkPermissions();
-  const result = permission.receive === "prompt" ? await PushNotifications.requestPermissions() : permission;
+  const result =
+    permission.receive === "prompt" ? await PushNotifications.requestPermissions() : permission;
   if (result.receive !== "granted") return;
 
   await PushNotifications.createChannel({

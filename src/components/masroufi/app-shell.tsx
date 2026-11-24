@@ -4,6 +4,10 @@ import { ClipboardList, LayoutGrid, Receipt, Scale, Settings } from "lucide-reac
 import { cn } from "@/lib/utils";
 import { useSnapshot } from "@/lib/masroufi/hooks";
 import { initializePushNotifications } from "@/lib/masroufi/push-client";
+import { useCurrentUser } from "@/lib/auth/use-current-user";
+import { bankSmsSupported, syncBankSms } from "@/lib/masroufi/bank-sms";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { Logo } from "./logo";
 import { MemberDot } from "./member-dot";
 import { useTheme } from "./theme";
@@ -19,6 +23,41 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { data } = useSnapshot();
   const me = data?.me;
+  const user = useCurrentUser();
+  const qc = useQueryClient();
+  const ownerKey =
+    user && data?.household && me
+      ? JSON.stringify([user.id, data.household.id, me.memberId])
+      : null;
+  useEffect(() => {
+    if (!ownerKey || !bankSmsSupported()) return;
+    const sync = () => {
+      if (document.visibilityState !== "visible") return;
+      void syncBankSms(ownerKey)
+        .then((count) => {
+          if (count) {
+            void qc.invalidateQueries({ queryKey: ["snapshot"] });
+            toast.success(`تمت مزامنة ${count} عملية بنكية`);
+          }
+        })
+        .catch(() =>
+          toast.error(
+            "تعذرت مزامنة عمليات البنك. العمليات محفوظة على الجهاز، راجع إعدادات رسائل البنك",
+          ),
+        );
+    };
+    sync();
+    const localQueueCheck = window.setInterval(sync, 30000);
+    document.addEventListener("visibilitychange", sync);
+    window.addEventListener("online", sync);
+    window.addEventListener("focus", sync);
+    return () => {
+      window.clearInterval(localQueueCheck);
+      document.removeEventListener("visibilitychange", sync);
+      window.removeEventListener("online", sync);
+      window.removeEventListener("focus", sync);
+    };
+  }, [ownerKey, qc]);
   const { setTheme } = useTheme();
 
   useEffect(() => {
@@ -33,7 +72,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, [data?.members, me, setTheme]);
 
   useEffect(() => {
-    void initializePushNotifications();
+    void initializePushNotifications().catch(() => {
+      /* Push service is optional; SMS settings remain usable. */
+    });
   }, []);
 
   return (

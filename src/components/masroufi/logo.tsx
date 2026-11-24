@@ -1,4 +1,3 @@
-﻿import { Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function Logo({
@@ -10,26 +9,25 @@ export function Logo({
   withWord?: boolean;
   invert?: boolean;
 }) {
-  const box = size === "lg" ? "size-12 rounded-lg" : size === "sm" ? "size-8 rounded-md" : "size-10 rounded-md";
-  const icon = size === "lg" ? "size-6" : size === "sm" ? "size-4" : "size-5";
+  const box =
+    size === "lg"
+      ? "size-12 rounded-lg"
+      : size === "sm"
+        ? "size-8 rounded-md"
+        : "size-10 rounded-md";
   return (
     <span className="inline-flex items-center gap-2">
-      <span
-        className={cn(
-          "grid place-items-center",
-          box,
-          invert ? "bg-surface/15 text-hero-fg" : "bg-primary text-primary-fg",
-        )}
-      >
-        <Wallet className={icon} strokeWidth={1.75} />
-      </span>
+      <img src="/masareef-icon.png" alt="" className={cn("object-contain", box)} />
       {withWord ? (
-        <span className={cn("text-lg font-semibold tracking-tight", invert ? "text-hero-fg" : "text-fg")}>
-          رقيب
+        <span
+          className={cn(
+            "text-lg font-semibold tracking-tight",
+            invert ? "text-hero-fg" : "text-fg",
+          )}
+        >
+          مصاريف
         </span>
       ) : null}
     </span>
   );
 }
-
-

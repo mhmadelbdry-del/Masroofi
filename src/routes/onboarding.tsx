@@ -78,7 +78,7 @@ function OnboardingForm() {
           <Input id="goal" type="number" min="0" value={goal} onChange={(e) => setGoal(e.target.value)} required />
         </div>
         <Button type="submit" className="w-full" disabled={mut.create.isPending}>
-          {mut.create.isPending ? "نجهّز الدفتر…" : "ابدأ مصروفي"}
+          {mut.create.isPending ? "نجهّز الدفتر…" : "ابدأ مصاريف"}
         </Button>
       </form>
       <p className="mt-5 text-center text-sm text-muted">

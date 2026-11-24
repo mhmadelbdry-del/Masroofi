@@ -1,3 +1,4 @@
+import { REFERENCE_CATEGORIES } from "./reference-categories";
 import type { CategoryKind } from "./types";
 
 export const DEFAULT_CATEGORIES: {
@@ -13,4 +14,7 @@ export const DEFAULT_CATEGORIES: {
   { name: "صيانات", kind: "unexpected", monthlyLimit: 1000 },
   { name: "جمعيات", kind: "necessity", monthlyLimit: 0 },
   { name: "عناية شخصية", kind: "extra", monthlyLimit: 700 },
+  ...REFERENCE_CATEGORIES.filter(
+    (c) => !["بقالة", "فواتير", "صيانة", "صحة", "مواصلات", "شخصي"].includes(c.name),
+  ),
 ];

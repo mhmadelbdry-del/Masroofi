@@ -47,7 +47,7 @@ function Login() {
         <div className="mb-4 flex justify-center">
           <Logo size="lg" />
         </div>
-        <h1 className="text-3xl font-semibold tracking-tight">مصروفي</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">مصاريف</h1>
         <p className="mt-2 text-muted">دفتر البيت — مصروفكما في مكان واحد، يتزامن بين الجوالين.</p>
       </div>
 

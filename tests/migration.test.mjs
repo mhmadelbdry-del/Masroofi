@@ -1,0 +1,21 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { PGlite } from '@electric-sql/pglite';
+import { readFileSync,readdirSync } from 'node:fs';
+import {z} from 'zod';
+test('additive migration preserves data, adds categories with valid ids and atomic SMS dedupe',async()=>{
+ const db=new PGlite();
+ for(const name of readdirSync('migrations').filter(n=>/^000[1-6]_.*\.sql$/.test(n)).sort()) await db.exec(readFileSync('migrations/'+name,'utf8'));
+ await db.exec("insert into households (id,join_code) values ('house','TEST01'); insert into household_members (id,household_id,name) values ('member','house','Synthetic'); insert into categories (id,household_id,name,kind,monthly_limit) values ('old','house','فواتير','necessity',700); insert into expenses (id,household_id,category_id,description,amount,created_by_member_id,updated_by_member_id) values ('expense','house','old','existing',20,'member','member');");
+ const migration=readFileSync('migrations/0007_bank_sms.sql','utf8');await db.exec(migration);await db.exec(migration);
+ assert.equal((await db.query("select monthly_limit from categories where id='old'")).rows[0].monthly_limit,'700.00');
+ assert.equal((await db.query("select amount from expenses where id='expense'")).rows[0].amount,'20.00');
+ const cats=(await db.query('select id,name from categories')).rows;assert.equal(cats.length,25);for(const c of cats.filter(c=>c.id!=='old')) assert.ok(z.string().uuid().safeParse(c.id).success);
+ assert.equal(cats.filter(c=>c.name==='فواتير').length,1);
+ const insert="insert into expenses (id,household_id,category_id,description,amount,created_by_member_id,updated_by_member_id,bank_sms_owner,bank_sms_key) values ($1,'house','old','SMS',50,'member','member','user',$2) on conflict (bank_sms_owner,bank_sms_key) where bank_sms_key is not null do nothing returning id";
+ const key='a'.repeat(64);const result=await Promise.all([db.query(insert,['sms1',key]),db.query(insert,['sms2',key])]);assert.equal(result.reduce((n,r)=>n+r.rows.length,0),1);assert.equal((await db.query("select count(*) from expenses where bank_sms_key=$1",[key])).rows[0].count,1);
+ const receiptInsert="with r as (insert into bank_sms_receipts (owner_user_id,sms_key,expense_id) values ('user',$1,$2) on conflict (owner_user_id,sms_key) do nothing returning expense_id) insert into expenses (id,household_id,category_id,description,amount,created_by_member_id,updated_by_member_id,bank_sms_owner,bank_sms_key) select expense_id,'house','old','SMS',50,'member','member','user',$1 from r returning id";
+ const key2='b'.repeat(64);const receipts=await Promise.all([db.query(receiptInsert,[key2,'r1']),db.query(receiptInsert,[key2,'r2'])]);assert.equal(receipts.reduce((n,r)=>n+r.rows.length,0),1);
+ await db.query("delete from expenses where bank_sms_key=$1",[key2]);assert.equal((await db.query(receiptInsert,[key2,'r3'])).rows.length,0);
+ await db.close();
+});

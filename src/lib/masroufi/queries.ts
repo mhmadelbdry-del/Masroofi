@@ -1005,3 +1005,40 @@ export const saveReflection = createServerFn({ method: "POST" })
     `;
     return { ok: true };
   });
+
+// SMS text, sender ids, balances and account/card numbers never reach this endpoint.
+// Membership and identity are rechecked at sync time, not trusted from the device.
+export const importBankExpense = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((d: unknown) => z.object({
+    key: z.string().regex(/^[a-f0-9]{64}$/),
+    amount: z.number().positive().max(1_000_000).refine(v => Math.abs(v * 100 - Math.round(v * 100)) < 0.00001),
+    occurredAt: z.string().datetime(), categoryId: z.string().uuid(), ownerKey: z.string().min(1).max(300),
+  }).parse(d))
+  .handler(async ({ context, data }) => {
+    const sql = await getSql();
+    const mine = await membership(sql, context.userId);
+    if (!mine || data.ownerKey !== JSON.stringify([context.userId, mine.household_id, mine.member_id])) throw new Error("تغير الحساب أو الأسرة. راجع إعدادات رسائل البنك");
+    const occurredAt = new Date(data.occurredAt);
+    if (occurredAt.getTime() > Date.now() + 300_000 || occurredAt.getUTCFullYear() < 2020) throw new Error("تاريخ العملية غير صالح");
+    const parts = new Intl.DateTimeFormat("en-GB", { timeZone: "Africa/Cairo", year: "numeric", month: "numeric" }).formatToParts(occurredAt);
+    const year = Number(parts.find(p => p.type === "year")?.value);
+    const month = Number(parts.find(p => p.type === "month")?.value);
+    const rows = await sql<{ id: string }>`
+      with receipt as (
+        insert into bank_sms_receipts (owner_user_id, sms_key, expense_id)
+        select ${context.userId}, ${data.key}, ${crypto.randomUUID()}
+        where exists (select 1 from categories c where c.id = ${data.categoryId} and c.household_id = ${mine.household_id} and c.archived = false)
+        on conflict (owner_user_id, sms_key) do nothing returning expense_id
+      )
+      insert into expenses (id, household_id, category_id, description, amount, occurred_at,
+        accounting_year, accounting_month, created_by_member_id, updated_by_member_id, bank_sms_key, bank_sms_owner)
+      select r.expense_id, ${mine.household_id}, ${data.categoryId}, ${"مصروف تلقائي من رسالة"}, ${data.amount}, ${data.occurredAt}::timestamptz,
+        ${year}, ${month}, ${mine.member_id}, ${mine.member_id}, ${data.key}, ${context.userId}
+      from receipt r returning id
+    `;
+    if (rows[0]) return { id: rows[0].id, duplicate: false };
+    const existing = await sql<{ id: string }>`select expense_id as id from bank_sms_receipts where owner_user_id = ${context.userId} and sms_key = ${data.key} limit 1`;
+    if (existing[0]) return { id: existing[0].id, duplicate: true };
+    throw new Error("الفئة المحفوظة لم تعد متاحة. أعد تفعيلها من إدارة الفئات ثم حاول المزامنة");
+  });

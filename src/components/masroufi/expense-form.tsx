@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { Category, Member } from "@/lib/masroufi/types";
+import { CategoryPicker } from "./category-picker";
 import { MemberDot } from "./member-dot";
 
 export function ExpenseForm({
@@ -48,7 +49,7 @@ export function ExpenseForm({
           required
         />
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid gap-3">
         <div className="space-y-1.5">
           <Label htmlFor="exp-amount">المبلغ</Label>
           <Input
@@ -63,24 +64,8 @@ export function ExpenseForm({
             required
           />
         </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="exp-cat">الفئة</Label>
-          <select
-            id="exp-cat"
-            value={categoryId}
-            onChange={(e) => setCategoryId(e.target.value)}
-            required
-            className="flex h-11 w-full rounded-md border border-border bg-surface px-3 text-sm text-fg outline-none focus:border-primary focus:ring-2 focus:ring-ring/20"
-          >
-            <option value="">اختر الفئة…</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </div>
       </div>
+      <CategoryPicker categories={categories} value={categoryId} onChange={setCategoryId} />
       <div className="flex items-center justify-between gap-3 rounded-md bg-primary-soft/60 px-3 py-2">
         <span className="text-xs text-muted">يُسجَّل تلقائياً باسم المستخدم الحالي</span>
         <span className="flex items-center gap-2 text-sm font-medium text-primary">
