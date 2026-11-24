@@ -110,7 +110,7 @@ export function useMasroufiMutations() {
   });
 
   const hideCat = useMutation({
-    mutationFn: (id: string) => archiveCategory({ data: { id } }),
+    mutationFn: (data: { id: string; replacementId?: string }) => archiveCategory({ data }),
     onSuccess: () => {
       toast.success("أُزيلت الفئة من القائمة");
       void invalidate();

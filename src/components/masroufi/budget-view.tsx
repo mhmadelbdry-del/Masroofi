@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { getCategoryUsage } from "@/lib/masroufi/queries";
+import { useMemo, useRef, useState } from "react";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +10,7 @@ import { useMasroufiMutations, useSnapshot } from "@/lib/masroufi/hooks";
 import { KIND_LABEL, type Category, type CategoryKind } from "@/lib/masroufi/types";
 import { CategoryBar } from "./category-bar";
 import { cn } from "@/lib/utils";
+
 
 const GROUPS: { id: CategoryKind; label: string }[] = [
   { id: "necessity", label: "الضروريات" },
@@ -26,6 +28,19 @@ const FILTERS = [
 export function BudgetView() {
   const { data } = useSnapshot();
   const mut = useMasroufiMutations();
+  const [deleting, setDeleting] = useState<Category | null>(null);
+  const [deleteError, setDeleteError] = useState("");
+  const [replacementId, setReplacementId] = useState("");
+  const [deleteUsage, setDeleteUsage] = useState<{ count: number; total: number } | null>(null);
+  const [checkingDelete, setCheckingDelete] = useState(false);
+  const deleteRequest = useRef(0);
+  async function beginDelete(category: Category) {
+    const request = ++deleteRequest.current;
+    setDeleting(category); setReplacementId(""); setDeleteUsage(null); setDeleteError(""); setCheckingDelete(true);
+    try { const usage = await getCategoryUsage({ data: { id: category.id } }); if (request === deleteRequest.current) setDeleteUsage(usage); }
+    catch { if (request === deleteRequest.current) setDeleteError("تعذر التأكد من المصروفات المرتبطة بالفئة. اقفل النافذة وجرّب تاني."); }
+    finally { if (request === deleteRequest.current) setCheckingDelete(false); }
+  }
   const [filter, setFilter] = useState<(typeof FILTERS)[number]["id"]>("all");
   const [editing, setEditing] = useState<Partial<Category> | "new" | null>(null);
 
@@ -39,11 +54,11 @@ export function BudgetView() {
   if (!data?.household) return null;
 
   const cap = data.categories.reduce((s, c) => s + c.monthlyLimit, 0);
-  const spent = data.categories.reduce((s, c) => s + c.spent, 0);
+  const spent = data.expenses.reduce((sum, expense) => sum + expense.amount, 0);
   const groupSummaries = GROUPS.map((group) => {
     const categories = data.categories.filter((c) => c.kind === group.id);
     const limit = categories.reduce((s, c) => s + c.monthlyLimit, 0);
-    const actual = categories.reduce((s, c) => s + c.spent, 0);
+    const actual = data.expenses.filter((expense) => expense.categoryKind === group.id).reduce((sum, expense) => sum + expense.amount, 0);
     return { ...group, limit, actual, pct: usagePct(actual, limit), tone: usageTone(actual, limit) };
   });
 
@@ -122,13 +137,13 @@ export function BudgetView() {
         {list.length === 0 ? (
           <p className="paper-card rounded-lg p-8 text-center text-sm text-muted">لا فئات في هذا التبويب.</p>
         ) : (
-          list.map((c) => <CategoryBar key={c.id} category={c} onEdit={() => setEditing(c)} />)
+          list.map((c) => <CategoryBar key={c.id} category={c} onEdit={() => setEditing(c)} onDelete={() => void beginDelete(c)} />)
         )}
       </div>
 
       <section className="paper-card rounded-lg p-4">
         <h2 className="mb-3 font-semibold">تعديل سريع لحد فئة</h2>
-        <QuickLimit categories={data.categories} onSave={(payload) => mut.saveCat.mutate(payload)} pending={mut.saveCat.isPending} />
+        <QuickLimit categories={data.categories} onSave={(payload) => mut.saveCat.mutate(payload)} pending={mut.saveCat.isPending || mut.hideCat.isPending} />
       </section>
 
       <Dialog open={Boolean(editing)} onOpenChange={(o) => !o && setEditing(null)}>
@@ -136,7 +151,7 @@ export function BudgetView() {
           {editing ? (
             <CategoryForm
               initial={editing === "new" ? undefined : (editing as Category)}
-              pending={mut.saveCat.isPending}
+              pending={mut.saveCat.isPending || mut.hideCat.isPending}
               onSubmit={(payload) => {
                 mut.saveCat.mutate(payload);
                 setEditing(null);
@@ -144,13 +159,41 @@ export function BudgetView() {
               onArchive={
                 editing !== "new" && (editing as Category).id
                   ? () => {
-                      mut.hideCat.mutate((editing as Category).id);
+                      void beginDelete(editing as Category);
                       setEditing(null);
                     }
                   : undefined
               }
             />
           ) : null}
+        </DialogContent>
+      </Dialog>
+      <Dialog open={Boolean(deleting)} onOpenChange={(open) => { if (!open && !mut.hideCat.isPending) setDeleting(null); }}>
+        <DialogContent title="حذف الفئة الفرعية">
+          <p className="text-sm leading-7">حذف «{deleting?.name}» من اختيارات المصروفات الجديدة؟</p>
+          <p className="mt-2 text-sm leading-7 text-muted">لن تُحذف أي مصروفات. الحذف يشمل فئات البيت المشترك، ويزيل سقف الفئة من الميزانية.</p>
+          {checkingDelete ? <p role="status" className="mt-3 text-sm">جارٍ فحص المصروفات في كل الشهور…</p> : deleteUsage ? <p className="mt-3 text-sm leading-7">{deleteUsage.count > 0 ? `الفئة مرتبطة بـ ${deleteUsage.count} مصروف بإجمالي ${formatMoney(deleteUsage.total)} في كل الشهور. اختر فئة بديلة لنقلها قبل الحذف.` : "مفيش مصروفات مسجلة في الفئة دي."}</p> : null}
+          {deleteUsage && deleteUsage.count > 0 ? <div className="mt-4 space-y-2">
+            <Label htmlFor="delete-replacement">انقل المصروفات إلى</Label>
+            <select id="delete-replacement" className="h-11 w-full rounded-md border border-border bg-surface px-3 text-sm" value={replacementId} onChange={event => setReplacementId(event.target.value)} disabled={mut.hideCat.isPending}>
+              <option value="">اختر الفئة البديلة…</option>
+              {data.categories.filter(category => category.id !== deleting?.id).map(category => <option key={category.id} value={category.id}>{category.name} · {KIND_LABEL[category.kind]}</option>)}
+            </select>
+            {data.categories.filter(category => category.id !== deleting?.id).length === 0 ? <p className="text-sm text-danger">أضف فئة جديدة الأول علشان تقدر تنقل المصروفات.</p> : null}
+            <p className="text-xs leading-6 text-muted">أسماء المصروفات ومبالغها وتواريخها هتفضل زي ما هي. هتتغير الفئة في كل الشهور، وتتحسب ضمن نوع الفئة البديلة. مش هننقل سقف الفئة المالي.</p>
+          </div> : null}
+          {deleteError ? <p role="alert" className="mt-3 text-sm text-danger">{deleteError}</p> : null}
+          <div className="mt-5 grid grid-cols-2 gap-3">
+            <Button type="button" variant="outline" disabled={mut.hideCat.isPending} onClick={() => setDeleting(null)}>إلغاء</Button>
+            <Button type="button" className="bg-danger text-white" disabled={mut.hideCat.isPending || checkingDelete || !deleteUsage || (deleteUsage.count > 0 && !replacementId)} onClick={async () => {
+              if (!deleting) return;
+              setDeleteError("");
+              try { await mut.hideCat.mutateAsync({ id: deleting.id, replacementId: replacementId || undefined }); setDeleting(null); }
+              catch (error) { setDeleteError(error instanceof Error ? error.message : "تعذر حذف الفئة. لم نحذف مصروفاتك، جرّب تاني.");
+                try { setDeleteUsage(await getCategoryUsage({ data: { id: deleting.id } })); } catch { /* Keep existing error visible. */ }
+              }
+            }}>{mut.hideCat.isPending ? "جارٍ الحذف…" : deleteUsage?.count ? "نقل المصروفات وحذف الفئة" : "حذف الفئة فقط"}</Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
@@ -264,7 +307,7 @@ function CategoryForm({
       </Button>
       {onArchive ? (
         <Button type="button" variant="outline" className="w-full text-danger" onClick={onArchive}>
-          إخفاء الفئة
+          حذف الفئة الفرعية
         </Button>
       ) : null}
     </form>

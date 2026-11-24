@@ -8,9 +8,11 @@ const TONE_LABEL = { ok: "ضمن الحد", warn: "قارب الحد", over: "ت
 export function CategoryBar({
   category,
   onEdit,
+  onDelete,
 }: {
   category: Category;
   onEdit?: () => void;
+  onDelete?: () => void;
 }) {
   const tone = usageTone(category.spent, category.monthlyLimit);
   const pct = usagePct(category.spent, category.monthlyLimit);
@@ -50,6 +52,7 @@ export function CategoryBar({
           </button>
         ) : null}
       </div>
+      {onDelete ? <button type="button" onClick={onDelete} aria-label={`حذف الفئة ${category.name}`} className="mt-3 min-h-11 w-full rounded-md border border-danger/30 px-3 text-sm font-medium text-danger hover:bg-danger/5">حذف الفئة الفرعية</button> : null}
     </article>
   );
 }

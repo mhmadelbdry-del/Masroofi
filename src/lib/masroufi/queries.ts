@@ -914,18 +914,29 @@ export const upsertCategory = createServerFn({ method: "POST" })
     return { id };
   });
 
-export const archiveCategory = createServerFn({ method: "POST" })
+export const getCategoryUsage = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
   .handler(async ({ context, data }) => {
     const sql = await getSql();
     const mine = await membership(sql, context.userId);
     if (!mine) throw new Error("لا يوجد بيت مرتبط بحسابك");
-    await sql`
-      update categories
-      set archived = true
-      where id = ${data.id} and household_id = ${mine.household_id}
+    const rows = await sql<{ count: string | number; total: string | number }>`
+      select count(e.id) as count, coalesce(sum(e.amount), 0) as total
+      from categories c left join expenses e on e.category_id = c.id and e.household_id = c.household_id
+      where c.id = ${data.id} and c.household_id = ${mine.household_id}
     `;
+    return { count: num(rows[0]?.count), total: num(rows[0]?.total) };
+  });
+
+export const archiveCategory = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((d: unknown) => z.object({ id: z.string().uuid(), replacementId: z.string().uuid().optional() }).parse(d))
+  .handler(async ({ context, data }) => {
+    const sql = await getSql();
+    const mine = await membership(sql, context.userId);
+    if (!mine) throw new Error("لا يوجد بيت مرتبط بحسابك");
+    await sql`select archive_expense_category(${mine.household_id}, ${data.id}, ${data.replacementId ?? null})`;
     return { ok: true };
   });
 
