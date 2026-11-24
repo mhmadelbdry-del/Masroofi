@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Logo } from "@/components/masroufi/logo";
+import { useStartupAnimation } from "@/components/masroufi/startup-loading";
 import { Splash } from "@/components/masroufi/auth-gate";
 
 export const Route = createFileRoute("/login")({ component: Login });
@@ -19,7 +20,8 @@ function Login() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  if (isPending) return <Splash />;
+  const startup = useStartupAnimation();
+  if (isPending || !startup.complete) return <Splash />;
   if (user) return <Navigate to="/" />;
 
   async function onEmail(e: FormEvent) {

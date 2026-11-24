@@ -33,9 +33,10 @@ function fail(error: unknown, fallback: string) {
   toast.error(message);
 }
 
-export function useSnapshot() {
+export function useSnapshot({ enabled = true }: { enabled?: boolean } = {}) {
   const { year, month } = useMonth();
   return useQuery({
+    enabled,
     queryKey: ["snapshot", year, month],
     queryFn: () => getMonthSnapshot({ data: { year, month } }),
     refetchInterval: 8000,

@@ -123,15 +123,15 @@ async function loadSnapshot(
         c.kind,
         c.monthly_limit,
         c.sort_order,
-        (select count(*) from expenses used where used.category_id = c.id and used.household_id = ${hid}) as usage_count,
-        coalesce((
-          select sum(e.amount) from expenses e
-          where e.category_id = c.id
-            and e.household_id = ${hid}
-            and e.accounting_year = ${year}
-            and e.accounting_month = ${month}
-        ), 0) as spent
+        coalesce(usage.usage_count, 0) as usage_count,
+        coalesce(usage.spent, 0) as spent
       from categories c
+      left join (
+        select category_id, count(*) as usage_count,
+          sum(amount) filter (where accounting_year = ${year} and accounting_month = ${month}) as spent
+        from expenses where household_id = ${hid}
+        group by category_id
+      ) usage on usage.category_id = c.id
       where c.household_id = ${hid} and c.archived = false
       order by c.sort_order asc
     `,

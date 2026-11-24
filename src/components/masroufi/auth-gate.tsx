@@ -4,12 +4,14 @@ import { isUnauthorized } from "@/lib/utils";
 import { useSnapshot } from "@/lib/masroufi/hooks";
 import { Navigate } from "@tanstack/react-router";
 import type { ReactNode } from "react";
+import { useStartupAnimation } from "./startup-loading";
 import { AnimatedSplashIcon } from "./animated-splash-icon";
 
 export function Splash({ label = "جاري التحميل…" }: { label?: string }) {
+  const startup = useStartupAnimation();
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-bg px-6 text-center">
-      <AnimatedSplashIcon />
+      <AnimatedSplashIcon onComplete={startup.finish} alreadyComplete={startup.complete} />
       <p className="mt-2 text-2xl font-semibold" style={{ fontFamily: "Aref Ruqaa, serif" }}>
         ﴿ وَكَفَىٰ بِٱللَّهِ حَسِیبࣰا ﴾
       </p>
@@ -23,7 +25,9 @@ export function Splash({ label = "جاري التحميل…" }: { label?: strin
 
 export function AuthGate({ children }: { children: ReactNode }) {
   const { user, isPending } = useCurrentUserState();
-  if (isPending) return <Splash />;
+  const startup = useStartupAnimation();
+  const snapshot = useSnapshot({ enabled: !!user && !isPending });
+  if (isPending || !startup.complete || (!!user && snapshot.isPending)) return <Splash label={isPending ? "جاري التحميل…" : "نجهّز دفتر البيت…"} />;
   if (!user) return <RedirectToSignIn />;
   return <>{children}</>;
 }
