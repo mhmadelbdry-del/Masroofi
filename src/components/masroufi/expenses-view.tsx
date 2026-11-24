@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useMasroufiMutations, useSnapshot } from "@/lib/masroufi/hooks";
@@ -13,7 +12,6 @@ export function ExpensesView() {
   const { year, month } = useMonth();
   const { data } = useSnapshot();
   const mut = useMasroufiMutations();
-  const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Expense | null>(null);
   const [filter, setFilter] = useState("all");
 
@@ -34,10 +32,7 @@ export function ExpensesView() {
           <h1 className="text-xl font-semibold">المصروفات اليومية</h1>
           <p className="mt-1 text-sm text-muted">{formatMonthTitle(year, month)}</p>
         </div>
-        <Button size="sm" onClick={() => setOpen(true)}>
-          <Plus className="size-4" />
-          قيد جديد
-        </Button>
+
       </div>
 
       <section className="paper-card rounded-lg p-4">
@@ -91,19 +86,7 @@ export function ExpensesView() {
         )}
       </section>
 
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent title="قيد جديد">
-          <ExpenseForm
-            categories={data.categories}
-            me={data.me}
-            pending={mut.add.isPending}
-            onSubmit={(payload) => {
-              mut.add.mutate({ ...payload, accountingYear: year, accountingMonth: month });
-              setOpen(false);
-            }}
-          />
-        </DialogContent>
-      </Dialog>
+
 
       <Dialog open={Boolean(editing)} onOpenChange={(o) => !o && setEditing(null)}>
         <DialogContent title="تعديل المصروف">

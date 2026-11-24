@@ -31,7 +31,7 @@ export function ExpenseForm({
       onSubmit={(e) => {
         e.preventDefault();
         const value = Number(amount);
-        if (!description.trim() || !categoryId || !Number.isFinite(value) || value <= 0) return;
+        if (!description.trim() || !categories.some((category) => category.id === categoryId) || !Number.isFinite(value) || value <= 0) return;
         onSubmit({ description: description.trim(), amount: value, categoryId });
         if (!initial) {
           setDescription("");
@@ -73,7 +73,7 @@ export function ExpenseForm({
           <MemberDot name={me.name} size="sm" active />
         </span>
       </div>
-      <Button type="submit" className="w-full" disabled={pending}>
+      <Button type="submit" className="w-full" disabled={pending || categories.length === 0}>
         {pending ? "جارٍ الحفظ…" : submitLabel}
       </Button>
     </form>

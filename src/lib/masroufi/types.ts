@@ -21,6 +21,7 @@ export type Category = {
   monthlyLimit: number;
   sortOrder: number;
   spent: number;
+  usageCount?: number;
 };
 
 export type JoinRequest = {

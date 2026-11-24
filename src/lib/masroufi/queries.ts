@@ -115,6 +115,7 @@ async function loadSnapshot(
       monthly_limit: string | number;
       sort_order: number;
       spent: string | number;
+      usage_count: string | number;
     }>`
       select
         c.id,
@@ -122,6 +123,7 @@ async function loadSnapshot(
         c.kind,
         c.monthly_limit,
         c.sort_order,
+        (select count(*) from expenses used where used.category_id = c.id and used.household_id = ${hid}) as usage_count,
         coalesce((
           select sum(e.amount) from expenses e
           where e.category_id = c.id
@@ -270,6 +272,7 @@ async function loadSnapshot(
     monthlyLimit: num(c.monthly_limit),
     sortOrder: num(c.sort_order),
     spent: num(c.spent),
+    usageCount: num(c.usage_count),
   }));
 
   const expenses: Expense[] = expRows.map((e) => ({
