@@ -14,7 +14,9 @@ const fetchSessionUser = createServerFn({ method: "GET" }).handler(async () => {
 });
 
 export const Route = createRootRoute({
-  beforeLoad: async () => ({ sessionUser: await fetchSessionUser() }),
+  // SSR keeps its session context. Client gates use the live auth client;
+  // data functions still verify the session on the server independently.
+  beforeLoad: async () => ({ sessionUser: typeof window === "undefined" ? await fetchSessionUser() : null }),
   head: () => ({
     meta: [
       { charSet: "utf-8" },

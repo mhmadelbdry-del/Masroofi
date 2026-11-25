@@ -90,6 +90,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           ) : null}
           <Link
             to="/settings"
+            preload="viewport"
             className={cn(
               "grid size-11 place-items-center rounded-full text-muted hover:bg-bg-warm",
               pathname === "/settings" && "bg-primary-soft text-primary",
@@ -112,6 +113,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <Link
                 key={tab.to}
                 to={tab.to}
+                preload="viewport"
                 className={cn(
                   "flex min-h-11 min-w-20 flex-1 flex-col items-center justify-center gap-0.5 rounded-lg px-2 py-1 text-xs font-medium transition-colors duration-150",
                   active ? "bg-primary-soft text-primary" : "text-subtle hover:text-fg",
