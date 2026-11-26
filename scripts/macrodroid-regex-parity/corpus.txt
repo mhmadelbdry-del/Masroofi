@@ -1,0 +1,47 @@
+# plain purchases
+Purchase of EGP 120.50 at CARREFOUR. Available balance EGP 4,300.00
+تم خصم 250.75 جنيه من حسابك في سوبر ماركت. الرصيد المتاح 3,000 جنيه
+Your card was charged: paid EGP 1,250.50 at Amazon. Balance: EGP 10,000.00
+تم شراء بمبلغ ٣٥٠٫٢٥ جنيه من مطعم. الرصيد ١٢٬٠٠٠ جنيه
+Debited 99 EGP for payment at Uber
+تم دفع 45 ج.م لخدمة الانترنت
+Payment of E£ 300 to Vodafone completed
+# balance first (macro must skip, never record the balance)
+Available balance EGP 5,000.00. Purchase of EGP 120.00 at STORE
+الرصيد المتاح 5000 جنيه. تم خصم 75 جنيه
+# no balance keyword, single amount
+Purchase EGP 15.5 at Cafe
+# ambiguous: two amounts before balance
+Purchase of EGP 100 at A and EGP 50 at B. Balance EGP 900
+# otp / refund / transfer / credited
+Your OTP is 123456 for purchase of EGP 120
+Refund of EGP 80 credited to your card after purchase
+تحويل 500 جنيه تم خصم من حسابك
+Salary credited EGP 9,000. Purchase fee EGP 5
+Cash-in EGP 200 paid by agent
+Top up EGP 50 purchase confirmed
+Offer! Pay with card and get cashback up to EGP 100 on purchase
+# currency mix
+Purchase of USD 20 at AMAZON. EGP 960 debited
+Purchase of 20 EUR debited EGP 1000
+تم شراء 10 دولار من الموقع
+# no currency / no debit
+Purchase of 120 at CARREFOUR
+Your statement is ready. Balance EGP 100
+Welcome to the bank app, EGP 100 bonus
+# digits and separators
+Purchase of EGP 1,234 at X
+Purchase of EGP 1234.5 at X
+Purchase of EGP 1.234 at X
+Purchase EGP 12,34 at X
+تم خصم ١٢٣٫٥ جنيه
+تم دفع ۴۵۰ ج.م
+Purchase EGP 2,000,000 at X
+Purchase EGP 0 at X
+Purchase EGP 1,250.5
+# amounts in other formats
+Purchase at store 5 for EGP 75
+Purchase card 4111 amount EGP 75 balance EGP 10
+paid 75 LE at shop. remaining 200 LE
+spent 8.25 egp today
+خصم 100 جنيهاً من البطاقة
