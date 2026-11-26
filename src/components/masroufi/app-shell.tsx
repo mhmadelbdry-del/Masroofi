@@ -9,6 +9,7 @@ import { bankSmsSupported, syncBankSms } from "@/lib/masroufi/bank-sms";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Logo } from "./logo";
+import { PendingBankExpense } from "./pending-bank-expense";
 import { MemberDot } from "./member-dot";
 import { useTheme } from "./theme";
 
@@ -102,7 +103,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      <main className="flex-1 px-4 pt-4 pb-32">{children}</main>
+      <main className="flex-1 px-4 pt-4 pb-32">
+        {me ? <PendingBankExpense /> : null}
+        {children}
+      </main>
 
       <nav className="pointer-events-none fixed inset-x-0 bottom-0 z-30 flex justify-center px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         <div className="pointer-events-auto flex w-full max-w-md items-center justify-around rounded-xl bg-surface px-2 py-2 shadow-nav">

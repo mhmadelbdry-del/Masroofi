@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useJoinRequestDetail, useMasroufiMutations, useSnapshot } from "@/lib/masroufi/hooks";
 import { BankSmsSettings } from "./bank-sms-settings";
+import { AppInfo } from "./app-info";
 import { BankBridgeSettings } from "./bank-bridge-settings";
 import { cn } from "@/lib/utils";
 import { useTheme, type MasroofiTheme } from "./theme";
@@ -75,6 +76,7 @@ function NoHouseholdSettings({ userLabel }: { userLabel: string }) {
           {signingOut ? "جارٍ الخروج…" : "تسجيل الخروج"}
         </Button>
       </section>
+      <AppInfo />
     </div>
   );
 }
@@ -307,7 +309,7 @@ function HouseholdSettings({
       <h1 className="text-xl font-semibold">إعدادات التطبيق</h1>
 
       <BankSmsSettings ownerKey={ownerKey} categories={data.categories} onSynced={mut.invalidate} />
-      <BankBridgeSettings categories={data.categories} />
+      <BankBridgeSettings />
       <ThemePicker defaultTheme={data.me.memberId === data.members[0]?.id ? "teal" : "pink"} />
 
       <section className="paper-card rounded-lg p-4">
@@ -439,6 +441,7 @@ function HouseholdSettings({
           {signingOut ? "جارٍ الخروج…" : "تسجيل الخروج"}
         </Button>
       </section>
+      <AppInfo />
     </div>
   );
 }

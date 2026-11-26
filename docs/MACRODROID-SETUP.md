@@ -4,13 +4,16 @@
 `{"amount": "120.50", "occurredAt": 1764100000000}` and nothing else: the amount text as extracted on the phone and the time MacroDroid says the notification was posted. The server rejects any other field, so notification text, title, balance, card digits and app name cannot be stored even by mistake.
 
 ## Server side (only after the user approves merging; deployment is coordinated, no Vercel login by Instinct)
-1. Merging the branch to GitHub `main` triggers the user's normal deploy. The build applies `migrations/0009_bank_bridge_devices.sql` (additive; 0008 is already taken by category removal).
-2. In the app: Settings, section "ربط إشعارات البنك عبر MacroDroid". Enter a device name, pick the category, press create. The key is shown once, on the signed-in screen only.
+1. Merging the branch to GitHub `main` triggers the user's normal deploy. The build applies `migrations/0009_bank_bridge_devices.sql` and `0010_bank_bridge_pending.sql` (additive).
+2. In the app: Settings, section "ربط إشعارات البنك عبر MacroDroid". Enter a device name and press create. No category is chosen here. The key is shown once, on the signed-in screen only.
 3. Copy it and paste it into MacroDroid on the same phone. Never send it in a chat or to an AI. If lost, cancel it and create a new one.
 4. "إلغاء" next to a device stops it at once. Up to 5 live devices per account.
 
+## What happens after a notification
+The server does NOT record an expense. It queues a pending item (amount and notification time only). When the user opens the app, a card at the top asks "تسجله في أنهي فئة؟"; picking a category and pressing "سجّل" creates the expense under the signed-in member, "تجاهل" drops it. A repeat delivery of the same notification never re-appears, even after it was registered or dismissed. The app cannot ask while it is closed (that would need Firebase push and a rebuilt APK); the macro below shows a phone notification instead.
+
 ## What the server enforces
-Bearer token per device (only its SHA-256 is stored); JSON only; body max 512 bytes; amount 0.01 to 1,000,000 with at most 2 decimals, sent as text and normalized server-side (Arabic-Indic digits and Arabic separators accepted; "1.234" and "12,34" rejected, never guessed); notification time within 24 h past and 5 min future; 30 per hour and 200 per day per device; dedupe on device + cents + the notification post time in ms; enrolled user, household and member rechecked on every post (403 if they no longer match); category must still be active (409). The 401 answer is the same for missing, unknown and revoked tokens.
+Bearer token per device (only its SHA-256 is stored); JSON only; body max 512 bytes; amount 0.01 to 1,000,000 with at most 2 decimals, sent as text and normalized server-side (Arabic-Indic digits and Arabic separators accepted; "1.234" and "12,34" rejected, never guessed); notification time within 24 h past and 5 min future; 30 per hour and 200 per day per device; dedupe on device + cents + the notification post time in ms; enrolled user, household and member rechecked on every post (403 if they no longer match); pending items are visible and resolvable only by the enrolled user, and the chosen category must be an active category of the same household at the moment of choosing. The 401 answer is the same for missing, unknown and revoked tokens.
 Failed-token throttle: 20 bad attempts per 10 minutes per caller address, then 429 (address stored only as a hash). The address comes only from Vercel's own headers and only when `VERCEL=1`. Vercel's request-headers documentation (https://vercel.com/docs/headers/request-headers) says it overwrites `X-Forwarded-For` and does not forward external IPs to prevent spoofing, and that `x-vercel-forwarded-for` and `x-real-ip` are identical to it. The code ignores `x-forwarded-for` and any client-supplied variant; off Vercel all callers share one bucket. The docs do not separately state overwrite behaviour for the other two headers beyond "identical", so this is documented-behaviour trust, not tested on a live Vercel deployment.
 
 ## The extraction recipe (reuses the app's own parser rules, tested)
@@ -33,7 +36,9 @@ Macro (free tier allows 5 macros):
 (?is)^(?:(?!available|remaining|balance|الرصيد|رصيد|المتاح).)*?(?<![0-9\u0660-\u0669\u06f0-\u06f9.,\u066b\u066c])((?:[0-9\u0660-\u0669\u06f0-\u06f9]{1,3}(?:[,\u066c][0-9\u0660-\u0669\u06f0-\u06f9]{3})+|[0-9\u0660-\u0669\u06f0-\u06f9]+)(?:[.\u066b][0-9\u0660-\u0669\u06f0-\u06f9]{1,2})?)\s*(?:EGP|LE|E£|ج\.?\s?م\.?|جنيه(?:ا|اً)?)
 ```
 5. Action: Set Variable (string) `amt` = `{v=amtA}{v=amtB}`.
-6. If `amt` is not empty: HTTP Request, POST, URL `https://masroofi-lac.vercel.app/api/bank-bridge`, headers `Authorization: Bearer <key pasted on the phone>` and `Content-Type: application/json`, body `{"amount": "{v=amt}", "occurredAt": {not_timestamp}}`. Leave "Allow any certificate" OFF.
+6. If `amt` is not empty, run steps 6 and 7:
+   HTTP Request, POST, URL `https://masroofi-lac.vercel.app/api/bank-bridge`, headers `Authorization: Bearer <key pasted on the phone>` and `Content-Type: application/json`, body `{"amount": "{v=amt}", "occurredAt": {not_timestamp}}`. Leave "Allow any certificate" OFF.
+7. Display Notification: title "مصروف جديد", text `{v=amt} جنيه، افتح مصاريف لاختيار الفئة`, "Invoke action on click" set to a Launch Application action for the مصاريف app (MacroDroid wiki: Action: Display Notification, "Invoke action, action block or macro on click"; Action: Launch Application). Show it only after a successful HTTP status if you want it to match the server; the status code can be saved from the HTTP Request action.
 Test only with a synthetic notification you send yourself, not a real purchase.
 
 ## Known limits

@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Logo } from "@/components/masroufi/logo";
 import { useStartupAnimation } from "@/components/masroufi/startup-loading";
 import { Splash } from "@/components/masroufi/auth-gate";
+import { AppInfo } from "@/components/masroufi/app-info";
 
 export const Route = createFileRoute("/login")({ component: Login });
 
@@ -107,6 +108,7 @@ function Login() {
       <p className="mt-6 text-center text-sm text-muted">
         بعد الدخول يمكنك إنشاء بيت جديد أو الانضمام برمز الشريك.
       </p>
+      <AppInfo />
     </main>
   );
 }

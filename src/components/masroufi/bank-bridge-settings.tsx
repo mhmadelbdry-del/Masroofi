@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Copy, KeyRound, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import type { Category } from "@/lib/masroufi/types";
 import { createBridgeDevice, listBridgeDevices, revokeBridgeDevice } from "@/lib/masroufi/bank-bridge-admin";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,15 +13,14 @@ const fmt = (v: string | null) => (v ? new Date(v).toLocaleString("ar-EG", { dat
  * Enrolls a MacroDroid device. The one-time key is shown only here, to the signed-in user, kept in component state
  * (never stored, logged or put in a URL) and dropped when dismissed or when the page unmounts.
  */
-export function BankBridgeSettings({ categories }: { categories: Category[] }) {
+export function BankBridgeSettings() {
   const qc = useQueryClient();
   const [label, setLabel] = useState("");
-  const [categoryId, setCategoryId] = useState("");
   const [secret, setSecret] = useState<{ id: string; token: string } | null>(null);
   const endpoint = typeof window === "undefined" ? "" : `${window.location.origin}/api/bank-bridge`;
   const devices = useQuery({ queryKey: ["bridge-devices"], queryFn: () => listBridgeDevices() });
   const create = useMutation({
-    mutationFn: () => createBridgeDevice({ data: { label: label.trim(), categoryId } }),
+    mutationFn: () => createBridgeDevice({ data: { label: label.trim() } }),
     onSuccess: (r) => { setSecret(r); setLabel(""); void qc.invalidateQueries({ queryKey: ["bridge-devices"] }); },
     onError: (e) => toast.error(e instanceof Error ? e.message : "تعذر إنشاء المفتاح"),
   });
@@ -39,7 +37,7 @@ export function BankBridgeSettings({ categories }: { categories: Category[] }) {
     <section className="paper-card space-y-3 rounded-lg p-4" aria-label="ربط MacroDroid">
       <h2 className="flex items-center gap-2 font-semibold"><KeyRound className="size-4" aria-hidden />ربط إشعارات البنك عبر MacroDroid</h2>
       <p className="text-sm leading-6 text-muted">
-        بديل لا يحتاج إذن الإشعارات داخل تطبيقك. MacroDroid يستخرج المبلغ على الموبايل ويرسل المبلغ ووقت الإشعار فقط، بدون نص الرسالة أو الرصيد. MacroDroid نفسه يحتاج إذن الوصول للإشعارات. كل جهاز له مفتاح مستقل يمكن إلغاؤه في أي وقت.
+        بديل لا يحتاج إذن الإشعارات داخل تطبيقك. MacroDroid يستخرج المبلغ على الموبايل ويرسل المبلغ ووقت الإشعار فقط، بدون نص الرسالة أو الرصيد. بعدها يسألك التطبيق: تسجله في أنهي فئة؟ MacroDroid نفسه يحتاج إذن الوصول للإشعارات. كل جهاز له مفتاح مستقل يمكن إلغاؤه في أي وقت.
       </p>
       <div className="space-y-1.5">
         <Label htmlFor="bridge-endpoint">عنوان الاستقبال</Label>
@@ -59,19 +57,12 @@ export function BankBridgeSettings({ categories }: { categories: Category[] }) {
           <Button type="button" size="sm" onClick={() => setSecret(null)}>تم اللصق، أخفِ المفتاح</Button>
         </div>
       ) : (
-        <form className="space-y-2" onSubmit={(e) => { e.preventDefault(); if (label.trim() && categoryId) create.mutate(); }}>
+        <form className="space-y-2" onSubmit={(e) => { e.preventDefault(); if (label.trim()) create.mutate(); }}>
           <div className="space-y-1.5">
             <Label htmlFor="bridge-label">اسم الجهاز</Label>
             <Input id="bridge-label" value={label} maxLength={60} onChange={(e) => setLabel(e.target.value)} placeholder="مثال: موبايل محمد" />
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="bridge-category">فئة المصروفات التلقائية</Label>
-            <select id="bridge-category" value={categoryId} onChange={(e) => setCategoryId(e.target.value)} className="h-11 w-full rounded-md border border-border bg-surface px-3">
-              <option value="">اختر الفئة</option>
-              {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-          </div>
-          <Button type="submit" disabled={create.isPending || !label.trim() || !categoryId || live.length >= 5}>إنشاء مفتاح جهاز</Button>
+          <Button type="submit" disabled={create.isPending || !label.trim() || live.length >= 5}>إنشاء مفتاح جهاز</Button>
         </form>
       )}
       <ul className="space-y-2" aria-label="الأجهزة المرتبطة">

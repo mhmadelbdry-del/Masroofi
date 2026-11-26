@@ -68,16 +68,15 @@ function fakeSql(opts: { revoked?: boolean; stillMember?: boolean; recent?: numb
     if (q.includes("into bank_bridge_failures")) { failLog.push(v[0]); return []; }
     if (q.includes("delete from bank_bridge_failures")) return [];
     if (q.includes("from bank_bridge_devices")) {
-      return !opts.revoked && v[0] === hashToken(token) ? [{ id: "dev1", user_id: "u1", household_id: "h1", member_id: "m1", category_id: "c1" }] : [];
+      return !opts.revoked && v[0] === hashToken(token) ? [{ id: "dev1", user_id: "u1", household_id: "h1", member_id: "m1" }] : [];
     }
     if (q.includes("from household_users")) return [{ n: opts.stillMember === false ? 0 : 1 }];
     if (q.includes("count(*) filter")) return [{ h: opts.recent ?? 0, d: opts.recent ?? 0 }];
     if (q.includes("with receipt as")) {
-      if (opts.categoryOk === false) return [];
       const [owner, key, expId] = v;
       if (receipts.has(owner + key)) return [];
       receipts.set(owner + key, expId);
-      expenses.push({ id: expId, amount: v[5], owner, hh: v[3], cat: v[4] });
+      expenses.push({ id: expId, amount: v[6], owner, hh: v[3], member: v[4], noCategory: true });
       return [{ id: expId }];
     }
     if (q.includes("update bank_bridge_devices")) return [];
@@ -90,7 +89,7 @@ const post = (f: ReturnType<typeof fakeSql>, body: unknown, ct = "application/js
   handleBridgePost(f.sql, auth === undefined ? `Bearer ${f.token}` : auth, ct, JSON.stringify({ occurredAt: NOW.getTime() - 1000, ...(body as object) }), NOW, () => "exp-" + Math.random(), "203.0.113.9");
 
 describe("handleBridgePost", () => {
-  it("creates one expense, then reports a duplicate for a repeat", async () => {
+  it("queues one pending item with no category, then reports a duplicate for a repeat", async () => {
     const f = fakeSql();
     const a = await post(f, { amount: 75 });
     assert.deepEqual(a, { status: 200, body: { ok: true, duplicate: false } });
@@ -134,8 +133,12 @@ describe("handleBridgePost", () => {
   it("429 over the hourly limit", async () => {
     assert.equal((await post(fakeSql({ recent: 30 }), { amount: 5 })).status, 429);
   });
-  it("409 when the saved category is archived or gone", async () => {
-    assert.equal((await post(fakeSql({ categoryOk: false }), { amount: 5 })).status, 409);
+  it("never inserts into expenses and never needs a category: the item waits for the user to choose", async () => {
+    const f = fakeSql();
+    await post(f, { amount: 75 });
+    assert.ok(f.expenses[0].noCategory);
+    assert.ok(!f.calls.some((q) => q.includes("insert into expenses")));
+    assert.ok(f.calls.some((q) => q.includes("bank_bridge_pending")));
   });
 });
 

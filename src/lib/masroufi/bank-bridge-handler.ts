@@ -1,5 +1,5 @@
 import type { Sql } from "@/lib/db";
-import { FAIL_LIMIT, FAIL_WINDOW_MS, LIMIT_PER_DAY, LIMIT_PER_HOUR, cairoYearMonth, dedupeKey, hashToken, ipKey, parseBridgeBody, tokenFromHeader } from "./bank-bridge.ts";
+import { FAIL_LIMIT, FAIL_WINDOW_MS, LIMIT_PER_DAY, LIMIT_PER_HOUR, dedupeKey, hashToken, ipKey, parseBridgeBody, tokenFromHeader } from "./bank-bridge.ts";
 
 export type BridgeResponse = { status: number; body: Record<string, unknown> };
 const json = (status: number, body: Record<string, unknown>): BridgeResponse => ({ status, body });
@@ -25,8 +25,8 @@ export async function handleBridgePost(
   const token = tokenFromHeader(authorization);
   if (!token) return fail();
   if (!contentType || !contentType.toLowerCase().startsWith("application/json")) return json(415, { ok: false });
-  const devices = await sql<{ id: string; user_id: string; household_id: string; member_id: string; category_id: string }>`
-    select id, user_id, household_id, member_id, category_id from bank_bridge_devices
+  const devices = await sql<{ id: string; user_id: string; household_id: string; member_id: string }>`
+    select id, user_id, household_id, member_id from bank_bridge_devices
     where token_hash = ${hashToken(token)} and revoked_at is null limit 1`;
   const dev = devices[0];
   if (!dev) return fail();
@@ -47,22 +47,18 @@ export async function handleBridgePost(
   if (Number(rate[0]?.h ?? 0) >= LIMIT_PER_HOUR || Number(rate[0]?.d ?? 0) >= LIMIT_PER_DAY) return json(429, { ok: false });
 
   const key = dedupeKey(dev.id, amount, occurredAt);
-  const { year, month } = cairoYearMonth(occurredAt);
+  // The receipt is the dedupe ledger: one row per notification, kept even after the item is registered or dismissed.
+  // The notification then waits in bank_bridge_pending (amount + time only) until the user picks a category in the app.
+  const pendingId = newId();
   const rows = await sql<{ id: string }>`
     with receipt as (
       insert into bank_sms_receipts (owner_user_id, sms_key, expense_id)
-      select ${owner}, ${key}, ${newId()}
-      where exists (select 1 from categories c where c.id = ${dev.category_id} and c.household_id = ${dev.household_id} and c.archived = false)
+      values (${owner}, ${key}, ${pendingId})
       on conflict (owner_user_id, sms_key) do nothing returning expense_id
     )
-    insert into expenses (id, household_id, category_id, description, amount, occurred_at,
-      accounting_year, accounting_month, created_by_member_id, updated_by_member_id, bank_sms_key, bank_sms_owner)
-    select r.expense_id, ${dev.household_id}, ${dev.category_id}, ${"مصروف تلقائي من إشعار"}, ${amount}, ${occurredAt.toISOString()}::timestamptz,
-      ${year}, ${month}, ${dev.member_id}, ${dev.member_id}, ${key}, ${owner}
+    insert into bank_bridge_pending (id, device_id, user_id, household_id, member_id, sms_key, amount, occurred_at)
+    select r.expense_id, ${dev.id}, ${dev.user_id}, ${dev.household_id}, ${dev.member_id}, ${key}, ${amount}, ${occurredAt.toISOString()}::timestamptz
     from receipt r returning id`;
   await sql`update bank_bridge_devices set last_used_at = now() where id = ${dev.id}`;
-  if (rows[0]) return json(200, { ok: true, duplicate: false });
-  const existing = await sql<{ id: string }>`select expense_id as id from bank_sms_receipts where owner_user_id = ${owner} and sms_key = ${key} limit 1`;
-  if (existing[0]) return json(200, { ok: true, duplicate: true });
-  return json(409, { ok: false, error: "category_unavailable" });
+  return json(200, { ok: true, duplicate: !rows[0] });
 }
